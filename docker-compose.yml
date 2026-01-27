@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./audio_chunks:/app/audio_chunks
+      - ./processed_audio:/app/processed_audio
+    restart: unless-stopped
