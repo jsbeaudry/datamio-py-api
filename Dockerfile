@@ -18,6 +18,6 @@ COPY . .
 # Create directories for audio processing
 RUN mkdir -p audio_chunks processed_audio input_audio
 
-EXPOSE 8000
+EXPOSE 8001
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
