@@ -1,0 +1,644 @@
+openapi: 3.0.3
+info:
+  title: Datamio Audio API
+  description: FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+
+tags:
+  - name: Health
+    description: API health check
+  - name: Splits (Sync)
+    description: Synchronous audio splitting operations
+  - name: Splits (Async)
+    description: Asynchronous audio splitting jobs
+  - name: Hugging Face
+    description: Dataset upload to Hugging Face
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: API Health Check
+      description: Check API health and list available endpoints
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/splits/file:
+    post:
+      tags:
+        - Splits (Sync)
+      summary: Split Single Audio File
+      description: Split audio file by silence detection. Returns segments with chunk file paths.
+      operationId: splitFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitsRequest'
+      responses:
+        '200':
+          description: Audio successfully split
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitsResponse'
+        '500':
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/batch:
+    post:
+      tags:
+        - Splits (Sync)
+      summary: Split Multiple Audio Files
+      description: Split multiple audio files by silence detection. Returns segments for each file.
+      operationId: splitBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSplitsRequest'
+      responses:
+        '200':
+          description: Batch successfully processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchSplitsResponse'
+        '500':
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/file/job:
+    post:
+      tags:
+        - Splits (Async)
+      summary: Create Split File Job
+      description: Create an async job for splitting audio file. Returns immediately with job ID.
+      operationId: createSplitFileJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitsRequest'
+      responses:
+        '200':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/batch/job:
+    post:
+      tags:
+        - Splits (Async)
+      summary: Create Batch Split Job
+      description: Create an async job for splitting multiple audio files. Returns immediately with job ID.
+      operationId: createSplitBatchJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSplitsRequest'
+      responses:
+        '200':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/job/{job_id}:
+    get:
+      tags:
+        - Splits (Async)
+      summary: Get Split Job Status
+      description: Get status of a specific split job
+      operationId: getSplitJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Splits (Async)
+      summary: Delete Split Job
+      description: Delete a split job from the database
+      operationId: deleteSplitJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID to delete
+      responses:
+        '200':
+          description: Job deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/jobs:
+    get:
+      tags:
+        - Splits (Async)
+      summary: Get All Split Jobs
+      description: Get all split jobs for a user
+      operationId: getAllSplitJobs
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: default
+          description: User ID to filter jobs
+      responses:
+        '200':
+          description: List of split jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SplitJobResponse'
+
+  /api/upload-audio-dataset:
+    post:
+      tags:
+        - Hugging Face
+      summary: Upload Audio Dataset
+      description: Create an upload job for audio dataset to Hugging Face. Returns immediately with job ID.
+      operationId: uploadAudioDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadAudioDatasetRequest'
+      responses:
+        '200':
+          description: Upload job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/job/{job_id}:
+    get:
+      tags:
+        - Hugging Face
+      summary: Get Upload Job Status
+      description: Get status of a specific upload job
+      operationId: getJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Hugging Face
+      summary: Delete Upload Job
+      description: Delete an upload job from the database
+      operationId: deleteJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID to delete
+      responses:
+        '200':
+          description: Job deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/jobs:
+    get:
+      tags:
+        - Hugging Face
+      summary: Get All Upload Jobs
+      description: Get all upload jobs for a user
+      operationId: getAllJobs
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: default
+          description: User ID to filter jobs
+      responses:
+        '200':
+          description: List of upload jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobResponse'
+
+components:
+  schemas:
+    SplitsRequest:
+      type: object
+      required:
+        - audio_url
+      properties:
+        audio_url:
+          type: string
+          format: uri
+          description: URL to the audio file
+          example: https://example.com/audio.wav
+        output_folder:
+          type: string
+          default: audio_chunks
+          description: Output folder for audio chunks
+        threshold:
+          type: number
+          format: float
+          default: 0.5
+          description: Voice activity detection threshold (0-1)
+        min_speech_duration_ms:
+          type: integer
+          default: 250
+          description: Minimum speech duration in milliseconds
+        min_silence_duration_ms:
+          type: integer
+          default: 100
+          description: Minimum silence duration in milliseconds
+        speech_pad_ms:
+          type: integer
+          default: 30
+          description: Speech padding in milliseconds
+        output_format:
+          type: string
+          default: wav
+          description: Output audio format
+          enum:
+            - wav
+            - mp3
+            - flac
+        return_absolute_paths:
+          type: boolean
+          default: false
+          description: Return absolute file paths instead of relative
+
+    BatchSplitsRequest:
+      type: object
+      required:
+        - audio_urls
+      properties:
+        audio_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: List of URLs to audio files
+          example:
+            - https://example.com/audio1.wav
+            - https://example.com/audio2.wav
+        output_base_folder:
+          type: string
+          default: processed_audio
+          description: Base output folder for processed audio
+        threshold:
+          type: number
+          format: float
+          default: 0.5
+          description: Voice activity detection threshold (0-1)
+        min_speech_duration_ms:
+          type: integer
+          default: 250
+          description: Minimum speech duration in milliseconds
+        min_silence_duration_ms:
+          type: integer
+          default: 100
+          description: Minimum silence duration in milliseconds
+        speech_pad_ms:
+          type: integer
+          default: 30
+          description: Speech padding in milliseconds
+        output_format:
+          type: string
+          default: wav
+          description: Output audio format
+        return_absolute_paths:
+          type: boolean
+          default: false
+          description: Return absolute file paths instead of relative
+
+    AudioDatasetItem:
+      type: object
+      required:
+        - id
+        - text
+        - audio
+        - nature
+        - language
+        - domain
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the audio sample
+          example: sample-001
+        text:
+          type: string
+          description: Transcript of the audio
+          example: This is the transcript of the audio
+        audio:
+          type: string
+          format: uri
+          description: URL to the audio file
+          example: https://example.com/audio.wav
+        speaker_id:
+          type: string
+          nullable: true
+          description: Speaker identifier
+          example: speaker_01
+        nature:
+          type: string
+          description: Nature of the audio (natural/synthetic)
+          example: natural
+        language:
+          type: string
+          description: Language code
+          example: en
+        domain:
+          type: string
+          description: Domain category
+          example: general
+
+    UploadAudioDatasetRequest:
+      type: object
+      required:
+        - dataset
+        - datasetName
+        - token
+      properties:
+        dataset:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudioDatasetItem'
+          description: Array of audio dataset items
+        datasetName:
+          type: string
+          description: Name for the Hugging Face dataset
+          example: my-audio-dataset
+        token:
+          type: string
+          description: Hugging Face API token
+          example: hf_your_token_here
+        isPrivate:
+          type: integer
+          default: 0
+          description: Whether the dataset should be private (0=public, 1=private)
+
+    Segment:
+      type: object
+      properties:
+        start:
+          type: number
+          format: float
+          description: Start time in seconds
+        end:
+          type: number
+          format: float
+          description: End time in seconds
+        url:
+          type: string
+          description: URL to the audio chunk
+
+    SplitsResponse:
+      type: object
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Segment'
+        count:
+          type: integer
+          description: Number of segments
+
+    BatchSplitsResponse:
+      type: object
+      properties:
+        results:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              segments:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Segment'
+              count:
+                type: integer
+              status:
+                type: string
+                enum:
+                  - success
+                  - failed
+              error:
+                type: string
+        total_files:
+          type: integer
+
+    SplitJobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - splitting
+            - completed
+            - failed
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        progress:
+          type: object
+          nullable: true
+        result:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    JobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - downloading
+            - uploading
+            - completed
+            - failed
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        progress:
+          type: object
+          nullable: true
+          properties:
+            total_files:
+              type: integer
+            downloaded_files:
+              type: integer
+            uploaded:
+              type: boolean
+        result:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        total_hg_jobs:
+          type: integer
+        total_split_jobs:
+          type: integer
+        endpoints:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                error:
+                  type: string
+                details:
+                  type: string
+                stack:
+                  type: string

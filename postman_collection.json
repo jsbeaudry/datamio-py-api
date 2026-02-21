@@ -1,0 +1,274 @@
+{
+  "info": {
+    "name": "Datamio Audio API",
+    "description": "FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8001",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Check API health and list available endpoints"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audio Splits",
+      "item": [
+        {
+          "name": "Split Single File (Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/file",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "file"]
+            },
+            "description": "Split audio file by silence detection. Accepts a URL to an audio file and returns segments with chunk file paths."
+          }
+        },
+        {
+          "name": "Split Batch Files (Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/batch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "batch"]
+            },
+            "description": "Split multiple audio files by silence detection. Accepts a list of URLs to audio files and returns segments for each."
+          }
+        },
+        {
+          "name": "Split Single File (Async Job)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/file/job",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "file", "job"]
+            },
+            "description": "Create a job for splitting audio file by silence detection. Returns immediately with job ID for tracking progress."
+          }
+        },
+        {
+          "name": "Split Batch Files (Async Job)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/batch/job",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "batch", "job"]
+            },
+            "description": "Create a job for splitting multiple audio files by silence detection. Returns immediately with job ID for tracking progress."
+          }
+        },
+        {
+          "name": "Get Split Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/job/:job_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "job", ":job_id"],
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": "your-job-id-here",
+                  "description": "The job ID returned from split job creation"
+                }
+              ]
+            },
+            "description": "Get status of a specific split job"
+          }
+        },
+        {
+          "name": "Get All Split Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/jobs?user_id=default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "jobs"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "default",
+                  "description": "User ID to filter jobs (optional)"
+                }
+              ]
+            },
+            "description": "Get all split jobs for a user"
+          }
+        },
+        {
+          "name": "Delete Split Job",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/splits/job/:job_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "splits", "job", ":job_id"],
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": "your-job-id-here",
+                  "description": "The job ID to delete"
+                }
+              ]
+            },
+            "description": "Delete a split job from the database"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hugging Face Upload",
+      "item": [
+        {
+          "name": "Upload Audio Dataset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataset\": [\n    {\n      \"id\": \"sample-001\",\n      \"text\": \"This is the transcript of the audio\",\n      \"audio\": \"https://example.com/audio1.wav\",\n      \"speaker_id\": \"speaker_01\",\n      \"nature\": \"natural\",\n      \"language\": \"en\",\n      \"domain\": \"general\"\n    },\n    {\n      \"id\": \"sample-002\",\n      \"text\": \"Another transcript example\",\n      \"audio\": \"https://example.com/audio2.wav\",\n      \"speaker_id\": \"speaker_02\",\n      \"nature\": \"synthetic\",\n      \"language\": \"en\",\n      \"domain\": \"medical\"\n    }\n  ],\n  \"datasetName\": \"my-audio-dataset\",\n  \"token\": \"hf_your_huggingface_token\",\n  \"isPrivate\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/upload-audio-dataset",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload-audio-dataset"]
+            },
+            "description": "Create an upload job for audio dataset to Hugging Face. Returns immediately with job ID."
+          }
+        },
+        {
+          "name": "Get Upload Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job/:job_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job", ":job_id"],
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": "your-job-id-here",
+                  "description": "The job ID returned from upload job creation"
+                }
+              ]
+            },
+            "description": "Get status of a specific upload job"
+          }
+        },
+        {
+          "name": "Get All Upload Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs?user_id=default",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "default",
+                  "description": "User ID to filter jobs (optional)"
+                }
+              ]
+            },
+            "description": "Get all upload jobs for a user"
+          }
+        },
+        {
+          "name": "Delete Upload Job",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job/:job_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job", ":job_id"],
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": "your-job-id-here",
+                  "description": "The job ID to delete"
+                }
+              ]
+            },
+            "description": "Delete an upload job from the database"
+          }
+        }
+      ]
+    }
+  ]
+}

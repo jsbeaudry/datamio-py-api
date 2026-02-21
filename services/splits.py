@@ -8,12 +8,116 @@ import hashlib
 import shutil
 import threading
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from contextlib import contextmanager
 import json
+import uuid
+from datetime import datetime
+from enum import Enum
+from pydantic import BaseModel
 
 # Default cleanup delay in seconds (5 minutes)
 CLEANUP_DELAY_SECONDS = 5 * 60
+
+# In-memory job storage (use Redis or database in production)
+splits_jobs_db: Dict[str, Dict[str, Any]] = {}
+
+
+class SplitJobStatus(str, Enum):
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    PROCESSING = "processing"
+    SPLITTING = "splitting"
+    SAVING_CHUNKS = "saving_chunks"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class SplitAudioRequest(BaseModel):
+    audio_source: str
+    output_folder: str = "audio_chunks"
+    threshold: float = 0.5
+    min_speech_duration_ms: int = 250
+    min_silence_duration_ms: int = 100
+    speech_pad_ms: int = 30
+    output_format: str = "wav"
+    return_absolute_paths: bool = False
+
+
+class SplitJobResponse(BaseModel):
+    job_id: str
+    status: SplitJobStatus
+    message: str
+    created_at: str
+    updated_at: str
+    progress: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+def create_split_job(user_id: str = "default") -> str:
+    """Create a new split job and return job ID"""
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    splits_jobs_db[job_id] = {
+        "job_id": job_id,
+        "user_id": user_id,
+        "status": SplitJobStatus.PENDING,
+        "message": "Job created, waiting to start",
+        "created_at": now,
+        "updated_at": now,
+        "progress": {
+            "segments_found": 0,
+            "chunks_saved": 0,
+            "total_chunks": 0,
+        },
+        "result": None,
+        "error": None,
+    }
+
+    return job_id
+
+
+def update_split_job(
+    job_id: str,
+    status: Optional[SplitJobStatus] = None,
+    message: Optional[str] = None,
+    progress: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+    error: Optional[str] = None,
+):
+    """Update split job information"""
+    if job_id not in splits_jobs_db:
+        return
+
+    job = splits_jobs_db[job_id]
+
+    if status:
+        job["status"] = status
+    if message:
+        job["message"] = message
+    if progress:
+        job["progress"].update(progress)
+    if result:
+        job["result"] = result
+    if error:
+        job["error"] = error
+
+    job["updated_at"] = datetime.utcnow().isoformat()
+
+
+def get_split_job(job_id: str) -> Optional[Dict[str, Any]]:
+    """Get split job information by ID"""
+    return splits_jobs_db.get(job_id)
+
+
+def get_user_split_jobs(user_id: str = "default") -> List[Dict[str, Any]]:
+    """Get all split jobs for a user"""
+    return [
+        job for job in splits_jobs_db.values()
+        if job["user_id"] == user_id
+    ]
 
 
 def is_url(path: str) -> bool:
@@ -328,124 +432,110 @@ def batch_process_folder(
     return results
 
 
-# # Example usage
-# if __name__ == "__main__":
-    
-#     # Example 1: Process single file
-#     print("Example 1: Single file processing")
-#     print("="*60)
-    
-#     # Check if example file exists
-#     audio_file = "/Users/jeansauvenelbeaudry/Documents/Local-Project/datamio-py-api/input_audio/1db53de0-4161-4abe-89e3-77e609ced9db.wav"
-    
-#     if not Path(audio_file).exists():
-#         print(f"❌ Audio file '{audio_file}' not found!")
-#         print(f"Please provide a valid audio file path.\n")
-        
-#         # Try to find any audio file in current directory
-#         current_dir = Path(".")
-#         audio_files = list(current_dir.glob("*.wav")) + list(current_dir.glob("*.mp3"))
-        
-#         if audio_files:
-#             print(f"Found these audio files in current directory:")
-#             for f in audio_files:
-#                 print(f"  - {f}")
-#             print(f"\nUsing: {audio_files[0]}")
-#             audio_file = str(audio_files[0])
-#         else:
-#             print("No audio files found in current directory.")
-#             print("Skipping Example 1...\n")
-#             audio_file = None
-    
-#     # if audio_file and Path(audio_file).exists():
-#     #     segments = process_audio_file(
-#     #         audio_file,
-#     #         output_folder="audio_chunks",
-#     #         threshold=0.5,
-#     #         min_speech_duration_ms=250,
-#     #         min_silence_duration_ms=100,
-#     #         speech_pad_ms=30,
-#     #         output_format="wav",
-#     #         return_absolute_paths=False
-#     #     )
-        
-#     #     # Print segments array with URLs
-#     #     print("\nSegments array with URLs:")
-#     #     print(json.dumps(segments, indent=2))
-        
-#     #     # Save to JSON
-#     #     output_json = "audio_chunks/segments.json"
-#     #     Path("audio_chunks").mkdir(exist_ok=True)
-#     #     with open(output_json, 'w') as f:
-#     #         json.dump(segments, f, indent=2)
-#     #     print(f"\n✓ Segments saved to: {output_json}")
-    
-    
-#     # Example 2: Batch processing
-#     print("\n\nExample 2: Batch processing")
-#     print("="*60)
-    
-#     input_folder = "input_audio"
-    
-#     # Create input folder if it doesn't exist
-#     Path(input_folder).mkdir(exist_ok=True)
-    
-#     results = batch_process_folder(
-#         input_folder=input_folder,
-#         output_base_folder="processed_audio",
-#         threshold=0.3,
-#         return_absolute_paths=False
-#     )
-    
-#     if results:
-#         print("\nBatch processing results:")
-#         for input_file, segments in results.items():
-#             print(f"\n{input_file}: {len(segments)} segments")
-#             for seg in segments[:2]:  # Show first 2
-#                 print(f"  - {seg}")
-        
-#         # Create output folder and save batch results to JSON
-#         output_base = Path("processed_audio")
-#         output_base.mkdir(exist_ok=True)
-        
-#         batch_results_file = output_base / "batch_results.json"
-#         with open(batch_results_file, 'w') as f:
-#             json.dump(results, f, indent=2)
-        
-#         print(f"\n✓ Batch results saved to: {batch_results_file}")
-#     else:
-#         print("\nNo files were processed.")
-#         print(f"To use batch processing:")
-#         print(f"  1. Create folder: mkdir {input_folder}")
-#         print(f"  2. Add audio files (.wav, .mp3, .flac, .m4a)")
-#         print(f"  3. Run the script again")
-    
-    
-#     # Example 3: Simple usage
-#     print("\n\nExample 3: Simple usage example")
-#     print("="*60)
-    
-#     print("""
-# # Simple usage in your code:
+async def process_split_job(
+    job_id: str,
+    audio_source: str,
+    output_folder: str = "audio_chunks",
+    threshold: float = 0.5,
+    min_speech_duration_ms: int = 250,
+    min_silence_duration_ms: int = 100,
+    speech_pad_ms: int = 30,
+    output_format: str = "wav",
+    return_absolute_paths: bool = False,
+):
+    """Background task to process audio splitting"""
+    try:
+        update_split_job(
+            job_id,
+            status=SplitJobStatus.PROCESSING,
+            message="Starting audio processing",
+        )
 
-# from audio_splitter import process_audio_file
+        # Determine base name and output subfolder
+        if is_url(audio_source):
+            url_path = urllib.parse.urlparse(audio_source).path
+            base_name = Path(url_path).stem or "audio"
+            url_hash = get_url_hash(audio_source)
+            output_folder = str(Path(output_folder) / url_hash)
+        else:
+            base_name = Path(audio_source).stem
 
-# # Process a single file
-# segments = process_audio_file(
-#     "my_audio.wav",
-#     output_folder="chunks",
-#     threshold=0.5
-# )
+        # Download if URL
+        if is_url(audio_source):
+            update_split_job(
+                job_id,
+                status=SplitJobStatus.DOWNLOADING,
+                message="Downloading audio file",
+            )
 
-# # segments will be:
-# # [
-# #     {"start": 0.0, "end": 2.5, "url": "chunks/my_audio_chunk_001_0.00s-2.50s.wav"},
-# #     {"start": 3.1, "end": 5.8, "url": "chunks/my_audio_chunk_002_3.10s-5.80s.wav"},
-# #     ...
-# # ]
+        with get_local_audio_path(audio_source) as local_path:
+            # Step 1: Detect speech segments
+            update_split_job(
+                job_id,
+                status=SplitJobStatus.SPLITTING,
+                message="Detecting speech segments with Silero VAD",
+            )
 
-# # Access the URLs
-# for seg in segments:
-#     print(f"Play: {seg['url']}")
-#     print(f"Duration: {seg['end'] - seg['start']:.2f}s")
-#     """)
+            segments = split_audio_by_silence(
+                local_path,
+                threshold=threshold,
+                min_speech_duration_ms=min_speech_duration_ms,
+                min_silence_duration_ms=min_silence_duration_ms,
+                speech_pad_ms=speech_pad_ms
+            )
+
+            update_split_job(
+                job_id,
+                message=f"Found {len(segments)} speech segments",
+                progress={
+                    "segments_found": len(segments),
+                    "total_chunks": len(segments),
+                }
+            )
+
+            # Step 2: Cut and save chunks
+            update_split_job(
+                job_id,
+                status=SplitJobStatus.SAVING_CHUNKS,
+                message="Cutting and saving audio chunks",
+            )
+
+            result_segments = cut_and_save_audio_chunks(
+                local_path,
+                segments,
+                output_folder=output_folder,
+                output_format=output_format,
+                return_absolute_paths=return_absolute_paths,
+                base_name=base_name
+            )
+
+            update_split_job(
+                job_id,
+                progress={"chunks_saved": len(result_segments)}
+            )
+
+        # Schedule automatic cleanup for URL-based sources
+        if is_url(audio_source):
+            schedule_folder_cleanup(output_folder)
+
+        # Job completed successfully
+        update_split_job(
+            job_id,
+            status=SplitJobStatus.COMPLETED,
+            message="Audio splitting completed successfully",
+            result={
+                "success": True,
+                "output_folder": output_folder,
+                "total_segments": len(result_segments),
+                "segments": result_segments,
+            }
+        )
+
+    except Exception as error:
+        import traceback
+        update_split_job(
+            job_id,
+            status=SplitJobStatus.FAILED,
+            message=f"Processing failed: {str(error)}",
+            error=traceback.format_exc(),
+        )

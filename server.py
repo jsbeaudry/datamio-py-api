@@ -7,8 +7,17 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 from pathlib import Path
-from services.hg import jobs_db,UploadAudioDatasetRequest,JobResponse,JobStatus,create_job,update_job,get_job,get_user_jobs,process_upload_job
-from services.splits import process_audio_file
+from services.hg import jobs_db, UploadAudioDatasetRequest, JobResponse, create_job, update_job, get_job, get_user_jobs, process_upload_job
+from services.splits import (
+    process_audio_file,
+    splits_jobs_db,
+    SplitJobStatus,
+    SplitJobResponse,
+    create_split_job,
+    update_split_job,
+    get_split_job,
+    get_user_split_jobs,
+)
 app = FastAPI()
 
 # Mount static files for serving audio chunks
@@ -158,9 +167,9 @@ async def process_splits_file_job(
 ):
     """Background task to process single file splits job"""
     try:
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.SPLITTING,
+            status=SplitJobStatus.SPLITTING,
             message=f"Processing audio: {audio_url}",
         )
 
@@ -179,9 +188,9 @@ async def process_splits_file_job(
         for segment in segments:
             segment['url'] = f"{base_url}/{segment['url']}"
 
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.COMPLETED,
+            status=SplitJobStatus.COMPLETED,
             message=f"Successfully processed {len(segments)} segments",
             progress={"processed_segments": len(segments)},
             result={
@@ -192,9 +201,9 @@ async def process_splits_file_job(
 
     except Exception as error:
         import traceback
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.FAILED,
+            status=SplitJobStatus.FAILED,
             message=f"Splits processing failed: {str(error)}",
             error=traceback.format_exc(),
         )
@@ -214,9 +223,9 @@ async def process_splits_batch_job(
 ):
     """Background task to process batch splits job"""
     try:
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.SPLITTING,
+            status=SplitJobStatus.SPLITTING,
             message=f"Processing batch of {len(audio_urls)} files",
             progress={
                 "total_files": len(audio_urls),
@@ -230,7 +239,7 @@ async def process_splits_batch_job(
         total_segments = 0
 
         for i, audio_url in enumerate(audio_urls, 1):
-            update_job(
+            update_split_job(
                 job_id,
                 message=f"Processing file {i}/{len(audio_urls)}: {audio_url}",
                 progress={"current_file": i}
@@ -260,7 +269,7 @@ async def process_splits_batch_job(
             except Exception as e:
                 results[audio_url] = {"segments": [], "count": 0, "status": "failed", "error": str(e)}
 
-            update_job(
+            update_split_job(
                 job_id,
                 progress={
                     "processed_files": i,
@@ -268,9 +277,9 @@ async def process_splits_batch_job(
                 }
             )
 
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.COMPLETED,
+            status=SplitJobStatus.COMPLETED,
             message=f"Batch processing complete: {len(audio_urls)} files, {total_segments} segments",
             result={
                 "results": results,
@@ -281,15 +290,15 @@ async def process_splits_batch_job(
 
     except Exception as error:
         import traceback
-        update_job(
+        update_split_job(
             job_id,
-            status=JobStatus.FAILED,
+            status=SplitJobStatus.FAILED,
             message=f"Batch splits processing failed: {str(error)}",
             error=traceback.format_exc(),
         )
 
 
-@app.post("/api/splits/file/job", response_model=JobResponse)
+@app.post("/api/splits/file/job", response_model=SplitJobResponse)
 async def splits_file_job(
     request: SplitsRequest,
     http_request: Request,
@@ -300,10 +309,10 @@ async def splits_file_job(
     Returns immediately with job ID for tracking progress.
     """
     try:
-        job_id = create_job()
+        job_id = create_split_job()
         base_url = str(http_request.base_url).rstrip('/')
 
-        update_job(
+        update_split_job(
             job_id,
             message=f"Job created for audio: {request.audio_url}",
             progress={"audio_url": request.audio_url}
@@ -323,8 +332,8 @@ async def splits_file_job(
             base_url=base_url,
         )
 
-        job_info = get_job(job_id)
-        return JobResponse(**job_info)
+        job_info = get_split_job(job_id)
+        return SplitJobResponse(**job_info)
 
     except HTTPException:
         raise
@@ -340,7 +349,7 @@ async def splits_file_job(
         )
 
 
-@app.post("/api/splits/batch/job", response_model=JobResponse)
+@app.post("/api/splits/batch/job", response_model=SplitJobResponse)
 async def splits_batch_job(
     request: BatchSplitsRequest,
     http_request: Request,
@@ -351,10 +360,10 @@ async def splits_batch_job(
     Returns immediately with job ID for tracking progress.
     """
     try:
-        job_id = create_job()
+        job_id = create_split_job()
         base_url = str(http_request.base_url).rstrip('/')
 
-        update_job(
+        update_split_job(
             job_id,
             message=f"Batch job created for {len(request.audio_urls)} files",
             progress={
@@ -377,8 +386,8 @@ async def splits_batch_job(
             base_url=base_url,
         )
 
-        job_info = get_job(job_id)
-        return JobResponse(**job_info)
+        job_info = get_split_job(job_id)
+        return SplitJobResponse(**job_info)
 
     except HTTPException:
         raise
@@ -392,6 +401,40 @@ async def splits_batch_job(
                 "stack": traceback.format_exc(),
             }
         )
+
+
+@app.get("/api/splits/job/{job_id}", response_model=SplitJobResponse)
+async def get_split_job_status(job_id: str):
+    """Get status of a specific split job"""
+    job = get_split_job(job_id)
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Split job {job_id} not found"
+        )
+
+    return SplitJobResponse(**job)
+
+
+@app.get("/api/splits/jobs", response_model=List[SplitJobResponse])
+async def get_all_split_jobs(user_id: str = "default"):
+    """Get all split jobs for a user"""
+    jobs = get_user_split_jobs(user_id)
+    return [SplitJobResponse(**job) for job in jobs]
+
+
+@app.delete("/api/splits/job/{job_id}")
+async def delete_split_job(job_id: str):
+    """Delete a split job from the database"""
+    if job_id not in splits_jobs_db:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Split job {job_id} not found"
+        )
+
+    del splits_jobs_db[job_id]
+    return {"message": f"Split job {job_id} deleted successfully"}
 
 
 @app.post("/api/upload-audio-dataset", response_model=JobResponse)
@@ -493,16 +536,24 @@ async def root():
     """API health check"""
     return {
         "status": "healthy",
-        "total_jobs": len(jobs_db),
+        "total_hg_jobs": len(jobs_db),
+        "total_split_jobs": len(splits_jobs_db),
         "endpoints": {
             "splits_file": "POST /api/splits/file",
             "splits_batch": "POST /api/splits/batch",
+            
             "splits_file_job": "POST /api/splits/file/job",
             "splits_batch_job": "POST /api/splits/batch/job",
+            
+            "get_split_job": "GET /api/splits/job/{job_id}",
+            "get_all_split_jobs": "GET /api/splits/jobs?user_id=default",
+            
+            "delete_split_job": "DELETE /api/splits/job/{job_id}",
+            
             "upload_dataset_job": "POST /api/upload-audio-dataset",
-            "get_job": "GET /api/job/{job_id}",
-            "get_all_jobs": "GET /api/jobs?user_id=default",
-            "delete_job": "DELETE /api/job/{job_id}",
+            "get_hg_job": "GET /api/job/{job_id}",
+            "get_all_hg_jobs": "GET /api/jobs?user_id=default",
+            "delete_hg_job": "DELETE /api/job/{job_id}",
         }
     }
 
