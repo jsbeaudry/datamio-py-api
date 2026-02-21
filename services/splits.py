@@ -16,8 +16,8 @@ from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
 
-# Default cleanup delay in seconds (5 minutes)
-CLEANUP_DELAY_SECONDS = 5 * 60
+# Default cleanup delay in seconds (60 minutes)
+CLEANUP_DELAY_SECONDS = 60 * 60
 
 # In-memory job storage (use Redis or database in production)
 splits_jobs_db: Dict[str, Dict[str, Any]] = {}

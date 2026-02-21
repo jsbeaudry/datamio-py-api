@@ -1,7 +1,26 @@
 openapi: 3.0.3
 info:
   title: Datamio Audio API
-  description: FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities
+  description: |
+    FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities.
+
+    ## Authentication
+
+    All API endpoints (except `GET /`) require an API key passed in the `X-API-Key` header.
+
+    ### Key Types
+
+    | Key Type | Source | Capabilities |
+    |----------|--------|--------------|
+    | Admin Key | `ADMIN_API_KEY` environment variable | Full access + can create/manage API keys |
+    | User Key | Generated via `POST /api/keys` | Access all endpoints except key creation |
+
+    ### Usage
+
+    Include the API key in your request headers:
+    ```
+    X-API-Key: your-api-key-here
+    ```
   version: 1.0.0
 
 servers:
@@ -17,329 +36,17 @@ tags:
     description: Asynchronous audio splitting jobs
   - name: Hugging Face
     description: Dataset upload to Hugging Face
-
-paths:
-  /:
-    get:
-      tags:
-        - Health
-      summary: API Health Check
-      description: Check API health and list available endpoints
-      operationId: healthCheck
-      responses:
-        '200':
-          description: API is healthy
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthResponse'
-
-  /api/splits/file:
-    post:
-      tags:
-        - Splits (Sync)
-      summary: Split Single Audio File
-      description: Split audio file by silence detection. Returns segments with chunk file paths.
-      operationId: splitFile
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SplitsRequest'
-      responses:
-        '200':
-          description: Audio successfully split
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SplitsResponse'
-        '500':
-          description: Processing error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/splits/batch:
-    post:
-      tags:
-        - Splits (Sync)
-      summary: Split Multiple Audio Files
-      description: Split multiple audio files by silence detection. Returns segments for each file.
-      operationId: splitBatch
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BatchSplitsRequest'
-      responses:
-        '200':
-          description: Batch successfully processed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BatchSplitsResponse'
-        '500':
-          description: Processing error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/splits/file/job:
-    post:
-      tags:
-        - Splits (Async)
-      summary: Create Split File Job
-      description: Create an async job for splitting audio file. Returns immediately with job ID.
-      operationId: createSplitFileJob
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SplitsRequest'
-      responses:
-        '200':
-          description: Job created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SplitJobResponse'
-        '500':
-          description: Job creation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/splits/batch/job:
-    post:
-      tags:
-        - Splits (Async)
-      summary: Create Batch Split Job
-      description: Create an async job for splitting multiple audio files. Returns immediately with job ID.
-      operationId: createSplitBatchJob
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BatchSplitsRequest'
-      responses:
-        '200':
-          description: Job created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SplitJobResponse'
-        '500':
-          description: Job creation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/splits/job/{job_id}:
-    get:
-      tags:
-        - Splits (Async)
-      summary: Get Split Job Status
-      description: Get status of a specific split job
-      operationId: getSplitJobStatus
-      parameters:
-        - name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The job ID
-      responses:
-        '200':
-          description: Job status retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SplitJobResponse'
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags:
-        - Splits (Async)
-      summary: Delete Split Job
-      description: Delete a split job from the database
-      operationId: deleteSplitJob
-      parameters:
-        - name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The job ID to delete
-      responses:
-        '200':
-          description: Job deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/splits/jobs:
-    get:
-      tags:
-        - Splits (Async)
-      summary: Get All Split Jobs
-      description: Get all split jobs for a user
-      operationId: getAllSplitJobs
-      parameters:
-        - name: user_id
-          in: query
-          required: false
-          schema:
-            type: string
-            default: default
-          description: User ID to filter jobs
-      responses:
-        '200':
-          description: List of split jobs
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SplitJobResponse'
-
-  /api/upload-audio-dataset:
-    post:
-      tags:
-        - Hugging Face
-      summary: Upload Audio Dataset
-      description: Create an upload job for audio dataset to Hugging Face. Returns immediately with job ID.
-      operationId: uploadAudioDataset
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadAudioDatasetRequest'
-      responses:
-        '200':
-          description: Upload job created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobResponse'
-        '400':
-          description: Missing required fields
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Job creation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/job/{job_id}:
-    get:
-      tags:
-        - Hugging Face
-      summary: Get Upload Job Status
-      description: Get status of a specific upload job
-      operationId: getJobStatus
-      parameters:
-        - name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The job ID
-      responses:
-        '200':
-          description: Job status retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/JobResponse'
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags:
-        - Hugging Face
-      summary: Delete Upload Job
-      description: Delete an upload job from the database
-      operationId: deleteJob
-      parameters:
-        - name: job_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The job ID to delete
-      responses:
-        '200':
-          description: Job deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/jobs:
-    get:
-      tags:
-        - Hugging Face
-      summary: Get All Upload Jobs
-      description: Get all upload jobs for a user
-      operationId: getAllJobs
-      parameters:
-        - name: user_id
-          in: query
-          required: false
-          schema:
-            type: string
-            default: default
-          description: User ID to filter jobs
-      responses:
-        '200':
-          description: List of upload jobs
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/JobResponse'
+  - name: API Key Management
+    description: Create and manage API keys
 
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication. Set ADMIN_API_KEY env var for admin access.
+
   schemas:
     SplitsRequest:
       type: object
@@ -495,6 +202,78 @@ components:
           default: 0
           description: Whether the dataset should be private (0=public, 1=private)
 
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name/identifier for the API key
+          example: user1
+        description:
+          type: string
+          description: Optional description for the API key
+          example: API key for production app
+
+    CreateApiKeyResponse:
+      type: object
+      properties:
+        api_key:
+          type: string
+          description: The full API key (only shown once at creation)
+          example: datamio_abc123...
+        key_id:
+          type: string
+          description: Unique identifier for the key
+          example: a1b2c3d4
+        name:
+          type: string
+          description: Name of the key
+        key_prefix:
+          type: string
+          description: Prefix for identification (safe to display)
+          example: datamio_abc1...
+        message:
+          type: string
+          example: Store this API key securely. It will not be shown again.
+
+    ApiKeyInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique key identifier
+        name:
+          type: string
+          description: Key name
+        description:
+          type: string
+          description: Key description
+        key_prefix:
+          type: string
+          description: Key prefix for identification
+        created_at:
+          type: string
+          format: date-time
+        last_used:
+          type: string
+          format: date-time
+          nullable: true
+        is_active:
+          type: boolean
+          description: Whether the key is active
+
+    ApiKeyListResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyInfo'
+        total:
+          type: integer
+
     Segment:
       type: object
       properties:
@@ -627,6 +406,9 @@ components:
           type: integer
         endpoints:
           type: object
+        auth:
+          type: string
+          example: All endpoints except GET / require X-API-Key header. POST /api/keys requires admin key.
 
     ErrorResponse:
       type: object
@@ -642,3 +424,639 @@ components:
                   type: string
                 stack:
                   type: string
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: API Health Check
+      description: Check API health and list available endpoints. No authentication required.
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/splits/file:
+    post:
+      tags:
+        - Splits (Sync)
+      summary: Split Single Audio File
+      description: Split audio file by silence detection. Returns segments with chunk file paths.
+      operationId: splitFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitsRequest'
+      responses:
+        '200':
+          description: Audio successfully split
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitsResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/batch:
+    post:
+      tags:
+        - Splits (Sync)
+      summary: Split Multiple Audio Files
+      description: Split multiple audio files by silence detection. Returns segments for each file.
+      operationId: splitBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSplitsRequest'
+      responses:
+        '200':
+          description: Batch successfully processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchSplitsResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/file/job:
+    post:
+      tags:
+        - Splits (Async)
+      summary: Create Split File Job
+      description: Create an async job for splitting audio file. Returns immediately with job ID.
+      operationId: createSplitFileJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitsRequest'
+      responses:
+        '200':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/batch/job:
+    post:
+      tags:
+        - Splits (Async)
+      summary: Create Batch Split Job
+      description: Create an async job for splitting multiple audio files. Returns immediately with job ID.
+      operationId: createSplitBatchJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSplitsRequest'
+      responses:
+        '200':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/job/{job_id}:
+    get:
+      tags:
+        - Splits (Async)
+      summary: Get Split Job Status
+      description: Get status of a specific split job
+      operationId: getSplitJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitJobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Splits (Async)
+      summary: Delete Split Job
+      description: Delete a split job from the database
+      operationId: deleteSplitJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID to delete
+      responses:
+        '200':
+          description: Job deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/splits/jobs:
+    get:
+      tags:
+        - Splits (Async)
+      summary: Get All Split Jobs
+      description: Get all split jobs for a user. **Requires admin API key.**
+      operationId: getAllSplitJobs
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: default
+          description: User ID to filter jobs
+      responses:
+        '200':
+          description: List of split jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SplitJobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can list all jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/upload-audio-dataset:
+    post:
+      tags:
+        - Hugging Face
+      summary: Upload Audio Dataset
+      description: Create an upload job for audio dataset to Hugging Face. Returns immediately with job ID.
+      operationId: uploadAudioDataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadAudioDatasetRequest'
+      responses:
+        '200':
+          description: Upload job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Job creation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/job/{job_id}:
+    get:
+      tags:
+        - Hugging Face
+      summary: Get Upload Job Status
+      description: Get status of a specific upload job
+      operationId: getJobStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Hugging Face
+      summary: Delete Upload Job
+      description: Delete an upload job from the database
+      operationId: deleteJob
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The job ID to delete
+      responses:
+        '200':
+          description: Job deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invalid or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/jobs:
+    get:
+      tags:
+        - Hugging Face
+      summary: Get All Upload Jobs
+      description: Get all upload jobs for a user. **Requires admin API key.**
+      operationId: getAllJobs
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: default
+          description: User ID to filter jobs
+      responses:
+        '200':
+          description: List of upload jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can list all jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/keys:
+    post:
+      tags:
+        - API Key Management
+      summary: Create API Key
+      description: |
+        Generate a new API key. **Requires admin API key.**
+
+        The full API key is only returned once at creation time. Store it securely.
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '200':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiKeyResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can generate new API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - API Key Management
+      summary: List All API Keys
+      description: List all API keys (without exposing the actual key values). **Requires admin API key.**
+      operationId: listApiKeys
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can list API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/keys/{key_id}:
+    get:
+      tags:
+        - API Key Management
+      summary: Get API Key Details
+      description: Get details of a specific API key. **Requires admin API key.**
+      operationId: getApiKey
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API key ID
+      responses:
+        '200':
+          description: API key details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyInfo'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can view API key details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - API Key Management
+      summary: Delete API Key
+      description: Permanently delete an API key. **Requires admin API key.**
+      operationId: deleteApiKey
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API key ID to delete
+      responses:
+        '200':
+          description: API key deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can delete API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/keys/{key_id}/revoke:
+    post:
+      tags:
+        - API Key Management
+      summary: Revoke API Key
+      description: Revoke (disable) an API key without permanently deleting it. **Requires admin API key.**
+      operationId: revokeApiKey
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The API key ID to revoke
+      responses:
+        '200':
+          description: API key revoked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Only admin can revoke API keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

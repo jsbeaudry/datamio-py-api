@@ -52,3 +52,6 @@ processed_audio/
 
 # Logs
 *.log
+
+# API keys storage (sensitive data)
+api_keys.json

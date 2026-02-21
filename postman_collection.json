@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Datamio Audio API",
-    "description": "FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities",
+    "description": "FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face with audio splitting capabilities.\n\n## Authentication\n\nAll API endpoints (except `GET /`) require an API key passed in the `X-API-Key` header.\n\n### Setup\n\n1. Set `apiKey` variable in collection variables to your API key\n2. For admin operations (creating keys), use the `ADMIN_API_KEY` environment variable value",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -9,8 +9,34 @@
       "key": "baseUrl",
       "value": "http://localhost:8001",
       "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "your-api-key-here",
+      "type": "string",
+      "description": "Your API key (admin key or user key)"
     }
   ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Health Check",
@@ -18,6 +44,9 @@
         {
           "name": "API Health Check",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -25,7 +54,133 @@
               "host": ["{{baseUrl}}"],
               "path": [""]
             },
-            "description": "Check API health and list available endpoints"
+            "description": "Check API health and list available endpoints. No authentication required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Key Management",
+      "description": "Endpoints to create and manage API keys. All endpoints in this folder require the admin API key.",
+      "item": [
+        {
+          "name": "Create API Key (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "description": "Must be the admin API key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"user1\",\n  \"description\": \"API key for user 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys"]
+            },
+            "description": "Generate a new API key. Requires admin API key. The full key is only returned once at creation time - store it securely."
+          }
+        },
+        {
+          "name": "List All API Keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys"]
+            },
+            "description": "List all API keys (without exposing actual key values). Requires admin API key."
+          }
+        },
+        {
+          "name": "Get API Key Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/keys/:key_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys", ":key_id"],
+              "variable": [
+                {
+                  "key": "key_id",
+                  "value": "your-key-id-here",
+                  "description": "The API key ID"
+                }
+              ]
+            },
+            "description": "Get details of a specific API key. Requires admin API key."
+          }
+        },
+        {
+          "name": "Revoke API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/keys/:key_id/revoke",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys", ":key_id", "revoke"],
+              "variable": [
+                {
+                  "key": "key_id",
+                  "value": "your-key-id-here",
+                  "description": "The API key ID to revoke"
+                }
+              ]
+            },
+            "description": "Revoke (disable) an API key without permanently deleting it. Requires admin API key."
+          }
+        },
+        {
+          "name": "Delete API Key",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/keys/:key_id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "keys", ":key_id"],
+              "variable": [
+                {
+                  "key": "key_id",
+                  "value": "your-key-id-here",
+                  "description": "The API key ID to delete"
+                }
+              ]
+            },
+            "description": "Permanently delete an API key. Requires admin API key."
           }
         }
       ]
@@ -41,6 +196,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
               }
             ],
             "body": {
@@ -63,6 +222,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
               }
             ],
             "body": {
@@ -85,6 +248,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
               }
             ],
             "body": {
@@ -107,6 +274,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
               }
             ],
             "body": {
@@ -125,7 +296,12 @@
           "name": "Get Split Job Status",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/splits/job/:job_id",
               "host": ["{{baseUrl}}"],
@@ -145,7 +321,12 @@
           "name": "Get All Split Jobs",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/splits/jobs?user_id=default",
               "host": ["{{baseUrl}}"],
@@ -165,7 +346,12 @@
           "name": "Delete Split Job",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/splits/job/:job_id",
               "host": ["{{baseUrl}}"],
@@ -194,6 +380,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
               }
             ],
             "body": {
@@ -212,7 +402,12 @@
           "name": "Get Upload Job Status",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/job/:job_id",
               "host": ["{{baseUrl}}"],
@@ -232,7 +427,12 @@
           "name": "Get All Upload Jobs",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/jobs?user_id=default",
               "host": ["{{baseUrl}}"],
@@ -252,7 +452,12 @@
           "name": "Delete Upload Job",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/job/:job_id",
               "host": ["{{baseUrl}}"],

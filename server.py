@@ -2,10 +2,10 @@
 FastAPI endpoint for uploading multi-domain audio datasets to Hugging Face
 Using async job processing with job tracking
 """
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 from services.hg import jobs_db, UploadAudioDatasetRequest, JobResponse, create_job, update_job, get_job, get_user_jobs, process_upload_job
 from services.splits import (
@@ -18,6 +18,14 @@ from services.splits import (
     get_split_job,
     get_user_split_jobs,
 )
+from services.auth import (
+    require_api_key,
+    generate_api_key,
+    revoke_api_key,
+    delete_api_key,
+    list_api_keys,
+    get_api_key_by_id,
+)
 app = FastAPI()
 
 # Mount static files for serving audio chunks
@@ -25,6 +33,11 @@ Path("audio_chunks").mkdir(exist_ok=True)
 Path("processed_audio").mkdir(exist_ok=True)
 app.mount("/audio_chunks", StaticFiles(directory="audio_chunks"), name="audio_chunks")
 app.mount("/processed_audio", StaticFiles(directory="processed_audio"), name="processed_audio")
+
+class CreateApiKeyRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+
 
 class SplitsRequest(BaseModel):
     audio_url: str
@@ -48,7 +61,11 @@ class BatchSplitsRequest(BaseModel):
 
 
 @app.post("/api/splits/file")
-async def splits_file(request: SplitsRequest, http_request: Request):
+async def splits_file(
+    request: SplitsRequest,
+    http_request: Request,
+    _: Dict = Depends(require_api_key)
+):
     """
     Split audio file by silence detection.
     Accepts a URL to an audio file and returns segments with chunk file paths.
@@ -92,7 +109,11 @@ async def splits_file(request: SplitsRequest, http_request: Request):
 
 
 @app.post("/api/splits/batch")
-async def splits_batch(request: BatchSplitsRequest, http_request: Request):
+async def splits_batch(
+    request: BatchSplitsRequest,
+    http_request: Request,
+    _: Dict = Depends(require_api_key)
+):
     """
     Split multiple audio files by silence detection.
     Accepts a list of URLs to audio files and returns segments for each.
@@ -302,7 +323,8 @@ async def process_splits_batch_job(
 async def splits_file_job(
     request: SplitsRequest,
     http_request: Request,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    _: Dict = Depends(require_api_key)
 ):
     """
     Create a job for splitting audio file by silence detection.
@@ -353,7 +375,8 @@ async def splits_file_job(
 async def splits_batch_job(
     request: BatchSplitsRequest,
     http_request: Request,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    _: Dict = Depends(require_api_key)
 ):
     """
     Create a job for splitting multiple audio files by silence detection.
@@ -404,7 +427,7 @@ async def splits_batch_job(
 
 
 @app.get("/api/splits/job/{job_id}", response_model=SplitJobResponse)
-async def get_split_job_status(job_id: str):
+async def get_split_job_status(job_id: str, _: Dict = Depends(require_api_key)):
     """Get status of a specific split job"""
     job = get_split_job(job_id)
 
@@ -418,14 +441,16 @@ async def get_split_job_status(job_id: str):
 
 
 @app.get("/api/splits/jobs", response_model=List[SplitJobResponse])
-async def get_all_split_jobs(user_id: str = "default"):
-    """Get all split jobs for a user"""
+async def get_all_split_jobs(user_id: str = "default", auth: Dict = Depends(require_api_key)):
+    """Get all split jobs for a user. Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can list all jobs")
     jobs = get_user_split_jobs(user_id)
     return [SplitJobResponse(**job) for job in jobs]
 
 
 @app.delete("/api/splits/job/{job_id}")
-async def delete_split_job(job_id: str):
+async def delete_split_job(job_id: str, _: Dict = Depends(require_api_key)):
     """Delete a split job from the database"""
     if job_id not in splits_jobs_db:
         raise HTTPException(
@@ -440,7 +465,8 @@ async def delete_split_job(job_id: str):
 @app.post("/api/upload-audio-dataset", response_model=JobResponse)
 async def upload_audio_dataset(
     request: UploadAudioDatasetRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    _: Dict = Depends(require_api_key)
 ):
     """
     Create an upload job for audio dataset
@@ -498,7 +524,7 @@ async def upload_audio_dataset(
 
 
 @app.get("/api/job/{job_id}", response_model=JobResponse)
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str, _: Dict = Depends(require_api_key)):
     """Get status of a specific job"""
     job = get_job(job_id)
     
@@ -512,14 +538,16 @@ async def get_job_status(job_id: str):
 
 
 @app.get("/api/jobs", response_model=List[JobResponse])
-async def get_all_jobs(user_id: str = "default"):
-    """Get all jobs for a user"""
+async def get_all_jobs(user_id: str = "default", auth: Dict = Depends(require_api_key)):
+    """Get all jobs for a user. Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can list all jobs")
     jobs = get_user_jobs(user_id)
     return [JobResponse(**job) for job in jobs]
 
 
 @app.delete("/api/job/{job_id}")
-async def delete_job(job_id: str):
+async def delete_job(job_id: str, _: Dict = Depends(require_api_key)):
     """Delete a job from the database"""
     if job_id not in jobs_db:
         raise HTTPException(
@@ -529,6 +557,64 @@ async def delete_job(job_id: str):
     
     del jobs_db[job_id]
     return {"message": f"Job {job_id} deleted successfully"}
+
+
+# ============== API KEY MANAGEMENT ==============
+
+@app.post("/api/keys")
+async def create_api_key(request: CreateApiKeyRequest, auth: Dict = Depends(require_api_key)):
+    """
+    Generate a new API key.
+    The full key is only returned once at creation time.
+    Requires admin API key.
+    """
+    if not auth.get("is_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin can generate new API keys"
+        )
+    result = generate_api_key(name=request.name, description=request.description)
+    return result
+
+
+@app.get("/api/keys")
+async def list_all_api_keys(auth: Dict = Depends(require_api_key)):
+    """List all API keys (without exposing the actual keys). Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can list API keys")
+    keys = list_api_keys()
+    return {"keys": keys, "total": len(keys)}
+
+
+@app.get("/api/keys/{key_id}")
+async def get_api_key(key_id: str, auth: Dict = Depends(require_api_key)):
+    """Get details of a specific API key. Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can view API key details")
+    key = get_api_key_by_id(key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail=f"API key {key_id} not found")
+    return key
+
+
+@app.post("/api/keys/{key_id}/revoke")
+async def revoke_key(key_id: str, auth: Dict = Depends(require_api_key)):
+    """Revoke an API key (soft delete). Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can revoke API keys")
+    if revoke_api_key(key_id):
+        return {"message": f"API key {key_id} has been revoked"}
+    raise HTTPException(status_code=404, detail=f"API key {key_id} not found")
+
+
+@app.delete("/api/keys/{key_id}")
+async def delete_key(key_id: str, auth: Dict = Depends(require_api_key)):
+    """Permanently delete an API key. Requires admin API key."""
+    if not auth.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Only admin can delete API keys")
+    if delete_api_key(key_id):
+        return {"message": f"API key {key_id} has been deleted"}
+    raise HTTPException(status_code=404, detail=f"API key {key_id} not found")
 
 
 @app.get("/")
@@ -554,7 +640,14 @@ async def root():
             "get_hg_job": "GET /api/job/{job_id}",
             "get_all_hg_jobs": "GET /api/jobs?user_id=default",
             "delete_hg_job": "DELETE /api/job/{job_id}",
-        }
+
+            "create_api_key": "POST /api/keys",
+            "list_api_keys": "GET /api/keys",
+            "get_api_key": "GET /api/keys/{key_id}",
+            "revoke_api_key": "POST /api/keys/{key_id}/revoke",
+            "delete_api_key": "DELETE /api/keys/{key_id}",
+        },
+        "auth": "All endpoints except GET / require X-API-Key header. POST /api/keys requires admin key."
     }
 
 

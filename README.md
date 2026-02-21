@@ -9,6 +9,7 @@ A FastAPI service for audio processing and dataset management. Split audio files
 - **Async Job Processing**: Long-running tasks run in the background with job tracking
 - **HuggingFace Integration**: Upload audio datasets directly to Hugging Face Hub
 - **URL Support**: Process audio files from URLs (including S3 presigned URLs)
+- **API Key Authentication**: Secure endpoints with API key-based authentication
 
 ## Installation
 
@@ -39,7 +40,12 @@ A FastAPI service for audio processing and dataset management. Split audio files
 4. Set up environment variables:
    ```bash
    cp .env.example .env
-   # Edit .env and add your HuggingFace token
+   # Edit .env and add your configuration
+   ```
+
+5. Set your admin API key (required for generating user API keys):
+   ```bash
+   export ADMIN_API_KEY="your-secure-admin-key-here"
    ```
 
 ## Usage
@@ -58,6 +64,61 @@ uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
 The API will be available at `http://localhost:8000`
 
+## Authentication
+
+All API endpoints (except `GET /`) require an API key passed in the `X-API-Key` header.
+
+### Setting Up Authentication
+
+1. **Set the admin API key** (environment variable):
+   ```bash
+   export ADMIN_API_KEY="your-secure-admin-key-here"
+   ```
+
+2. **Generate API keys for users** (using the admin key):
+   ```bash
+   curl -X POST http://localhost:8000/api/keys \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: $ADMIN_API_KEY" \
+     -d '{"name": "user1", "description": "API key for user 1"}'
+   ```
+
+   Response:
+   ```json
+   {
+     "api_key": "datamio_abc123...",
+     "key_id": "a1b2c3d4",
+     "name": "user1",
+     "key_prefix": "datamio_abc1...",
+     "message": "Store this API key securely. It will not be shown again."
+   }
+   ```
+
+3. **Use the API key in requests**:
+   ```bash
+   curl http://localhost:8000/api/splits/jobs \
+     -H "X-API-Key: datamio_abc123..."
+   ```
+
+### Key Types
+
+| Key Type | Source | Capabilities |
+|----------|--------|--------------|
+| Admin Key | `ADMIN_API_KEY` env var | Full access + can create/manage API keys |
+| User Key | Generated via API | Access all endpoints except key management |
+
+### API Key Management Endpoints
+
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/api/keys` | POST | Admin only | Generate a new API key |
+| `/api/keys` | GET | Admin only | List all API keys |
+| `/api/keys/{key_id}` | GET | Admin only | Get details of a specific key |
+| `/api/keys/{key_id}/revoke` | POST | Admin only | Revoke (disable) a key |
+| `/api/keys/{key_id}` | DELETE | Admin only | Permanently delete a key |
+
+---
+
 ### API Endpoints
 
 #### Health Check
@@ -72,6 +133,8 @@ Returns API status and available endpoints.
 
 ### Audio Splitting
 
+> **Note:** All endpoints below require the `X-API-Key` header.
+
 #### Split Single File
 
 ```
@@ -79,6 +142,12 @@ POST /api/splits/file
 ```
 
 Split an audio file by silence detection.
+
+**Headers:**
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
 
 **Request Body:**
 ```json
@@ -209,9 +278,10 @@ DELETE /api/job/{job_id}
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `HF_TOKEN` | HuggingFace API token for dataset uploads |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ADMIN_API_KEY` | Yes | Admin API key for generating and managing user API keys |
+| `HF_TOKEN` | No | HuggingFace API token for dataset uploads |
 
 ## Project Structure
 
@@ -219,11 +289,13 @@ DELETE /api/job/{job_id}
 datamio-py-api/
 ├── server.py              # Main FastAPI application
 ├── services/
+│   ├── auth.py            # API key authentication
 │   ├── splits.py          # Audio splitting with Silero VAD
 │   └── hg.py              # HuggingFace upload logic
 ├── diarisation/           # Speaker diarization modules
 │   ├── onnx_diarization.py
 │   └── vad_diarization.py
+├── api_keys.json          # Generated API keys storage (auto-created)
 ├── requirements.txt
 ├── .env.example
 └── README.md
