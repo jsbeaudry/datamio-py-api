@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU-only version (much smaller than full version)
-RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Install PyTorch CPU-only version (pinned to avoid torchcodec requirement)
+RUN pip install --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 
 # Copy requirements first for better caching
 COPY requirements.txt .
