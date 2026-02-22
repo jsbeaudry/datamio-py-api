@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- Primary Meta Tags -->
+    <title>Datamio API - Open Source Audio Processing & Speech Segmentation Platform</title>
+    <meta name="title" content="Datamio API - Open Source Audio Processing & Speech Segmentation Platform">
+    <meta name="description"
+        content="Self-hostable API for audio splitting, speech detection (VAD), batch processing, and Hugging Face dataset uploads. Open source, MIT licensed, and built for developers.">
+    <meta name="keywords"
+        content="audio processing API, speech segmentation, voice activity detection, VAD, audio splitting, Hugging Face, dataset upload, self-hosted, open source, FastAPI, Python API, audio AI, machine learning datasets">
+    <meta name="author" content="Datamio">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/jsbeaudry/datamio-py-api">
+    <meta property="og:title" content="Datamio API - Open Source Audio Processing Platform">
+    <meta property="og:description"
+        content="Self-hostable API for audio splitting, speech detection, and Hugging Face uploads. Open source and built for developers who value control.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/jsbeaudry/datamio-py-api/main/og-image.png">
+    <meta property="og:image:alt" content="Datamio API - Audio Processing Platform">
+    <meta property="og:site_name" content="Datamio API">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://github.com/jsbeaudry/datamio-py-api">
+    <meta name="twitter:title" content="Datamio API - Open Source Audio Processing Platform">
+    <meta name="twitter:description"
+        content="Self-hostable API for audio splitting, speech detection, and Hugging Face uploads. Open source and MIT licensed.">
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/jsbeaudry/datamio-py-api/main/og-image.png">
+
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://github.com/jsbeaudry/datamio-py-api">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Datamio API">
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Datamio API",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, macOS, Windows, Docker",
+        "description": "Open source, self-hostable API platform for audio processing, speech segmentation using VAD, batch audio processing, and Hugging Face dataset uploads.",
+        "url": "https://github.com/jsbeaudry/datamio-py-api",
+        "downloadUrl": "https://github.com/jsbeaudry/datamio-py-api",
+        "softwareVersion": "1.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "programmingLanguage": "Python",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "featureList": [
+            "Audio file splitting by silence detection",
+            "Voice Activity Detection (VAD)",
+            "Batch audio processing",
+            "Async job processing with status tracking",
+            "Hugging Face Hub integration",
+            "API key management",
+            "Docker deployment support"
+        ],
+        "author": {
+            "@type": "Organization",
+            "name": "Datamio",
+            "url": "https://github.com/jsbeaudry"
+        }
+    }
+    </script>
+
+    <!-- FAQ Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is Datamio API?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Datamio API is an open-source, self-hostable platform for audio processing. It provides endpoints for splitting audio files by silence detection, batch processing, and uploading datasets to Hugging Face Hub."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is Datamio API free to use?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, Datamio API is completely free and open source under the MIT license. You can self-host it on your own infrastructure with no usage limits."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How do I self-host Datamio API?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Clone the repository from GitHub, install dependencies with pip install -r requirements.txt, and run python server.py. Docker deployment is also supported with docker-compose up -d."
+                }
+            }
+        ]
+    }
+    </script>
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Noscript fallback -->
+    <noscript>
+        <style>
+            .code-panel {
+                display: block !important;
+                margin-bottom: 2rem;
+            }
+
+            .file-content {
+                display: block !important;
+                margin-bottom: 1rem;
+            }
+
+            .code-tab,
+            .file-tab {
+                display: none;
+            }
+        </style>
+    </noscript>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #0ea5e9;
+            --accent: #f43f5e;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --success: #10b981;
+            --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            --gradient-2: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+        }
+
+        html {
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            33% {
+                transform: translate(30px, -30px) rotate(5deg);
+            }
+
+            66% {
+                transform: translate(-20px, 20px) rotate(-5deg);
+            }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            flex-shrink: 0;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            background: var(--gradient-1);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.3s, box-shadow 0.3s;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            margin-left: auto;
+            margin-right: 1rem;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 44px;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-menu-btn span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-primary);
+            margin: 5px 0;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            z-index: 99;
+        }
+
+        .mobile-nav.active {
+            display: block;
+        }
+
+        .mobile-nav a {
+            display: block;
+            padding: 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+        }
+
+        .mobile-nav a:last-child {
+            border-bottom: none;
+        }
+
+        .mobile-nav a:hover,
+        .mobile-nav a:focus {
+            color: var(--text-primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            color: var(--primary-light);
+            margin-bottom: 2rem;
+        }
+
+        .badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        h1 {
+            font-size: clamp(2rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin-top: 4rem;
+            padding-top: 4rem;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: clamp(1rem, 2vw, 1.125rem);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* API Endpoints Section */
+        .endpoints {
+            padding: 6rem 2rem;
+            background: rgba(30, 41, 59, 0.5);
+            overflow-x: hidden;
+        }
+
+        .endpoints-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .endpoint-group {
+            margin-bottom: 3rem;
+        }
+
+        .endpoint-group h3 {
+            font-size: 1.25rem;
+            color: var(--primary-light);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .endpoint {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .endpoint:hover {
+            border-color: var(--primary);
+            background: var(--bg-card-hover);
+        }
+
+        .method {
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            min-width: 60px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .method-get {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .method-post {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .method-delete {
+            background: rgba(244, 63, 94, 0.2);
+            color: #f43f5e;
+        }
+
+        .endpoint-path {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            overflow-wrap: break-word;
+            word-break: break-all;
+            min-width: 0;
+        }
+
+        .endpoint-desc {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-left: auto;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        /* Code Example */
+        .code-section {
+            padding: 6rem 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .code-dot:nth-child(1) {
+            background: #ff5f57;
+        }
+
+        .code-dot:nth-child(2) {
+            background: #febc2e;
+        }
+
+        .code-dot:nth-child(3) {
+            background: #28c840;
+        }
+
+        .code-title {
+            margin-left: 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .code-content {
+            padding: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        pre {
+            margin: 0;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.875rem;
+            line-height: 1.7;
+        }
+
+        .code-keyword {
+            color: #ff79c6;
+        }
+
+        .code-string {
+            color: #a5d6ff;
+        }
+
+        .code-comment {
+            color: #6e7681;
+        }
+
+        .code-function {
+            color: #d2a8ff;
+        }
+
+        .code-variable {
+            color: #ffa657;
+        }
+
+        /* Code Tabs */
+        .code-tabs-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .code-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .code-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 44px;
+        }
+
+        .code-tab:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        .code-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .code-panel {
+            display: none;
+        }
+
+        .code-panel.active {
+            display: block;
+        }
+
+        .code-examples-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .code-block-mini {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-block-mini .code-header {
+            padding: 0.75rem 1rem;
+        }
+
+        .code-block-mini .code-content {
+            padding: 1rem;
+        }
+
+        .code-block-mini pre {
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .example-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            padding-left: 0.5rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        /* Browser-style file tabs */
+        .file-tabs-container {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .file-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .file-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .file-tab {
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--border);
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            position: relative;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+
+        .file-tab:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .file-tab.active {
+            background: #0d1117;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -1px;
+        }
+
+        .file-tab::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .file-tab.active::before {
+            background: var(--success);
+        }
+
+        .file-content {
+            display: none;
+            padding: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .file-content.active {
+            display: block;
+        }
+
+        .file-content pre {
+            margin: 0;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        .file-description {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 8rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta h2 {
+            font-size: clamp(1.75rem, 5vw, 3rem);
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta p {
+            color: var(--text-secondary);
+            font-size: clamp(1rem, 2.5vw, 1.25rem);
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--primary-light);
+            text-decoration: none;
+        }
+
+        /* Self-Host Section */
+        .self-host {
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+        }
+
+        .self-host-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .self-host-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-top: 3rem;
+        }
+
+        .self-host-content h3 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .self-host-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .self-host-benefits {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .self-host-benefits li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .self-host-benefits li:last-child {
+            border-bottom: none;
+        }
+
+        .benefit-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #10b981;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .deploy-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .deploy-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: var(--text-primary);
+            min-height: 48px;
+        }
+
+        .deploy-card:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+            background: var(--bg-card-hover);
+        }
+
+        .deploy-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .deploy-info h4 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .deploy-info p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin: 0;
+        }
+
+        .deploy-arrow {
+            margin-left: auto;
+            color: var(--text-muted);
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+
+        .deploy-card:hover .deploy-arrow {
+            transform: translateX(5px);
+            color: var(--primary);
+        }
+
+        .terminal-window {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .terminal-dot:nth-child(1) {
+            background: #ff5f57;
+        }
+
+        .terminal-dot:nth-child(2) {
+            background: #febc2e;
+        }
+
+        .terminal-dot:nth-child(3) {
+            background: #28c840;
+        }
+
+        .terminal-title {
+            margin-left: 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .terminal-body {
+            padding: 1.5rem;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .terminal-line {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .terminal-prompt {
+            color: #10b981;
+            margin-right: 0.75rem;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .terminal-command {
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .terminal-comment {
+            color: #6e7681;
+            font-style: italic;
+            white-space: nowrap;
+        }
+
+        /* ==========================================
+           RESPONSIVE STYLES
+           ========================================== */
+
+        /* Tablet */
+        @media (max-width: 1024px) {
+            .self-host-grid {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+
+            .stats {
+                gap: 2.5rem;
+            }
+
+            .hero {
+                padding: 7rem 1.5rem 3rem;
+            }
+
+            .code-tabs-container {
+                max-width: 100%;
+            }
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+
+            /* Navigation */
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: flex;
+            }
+
+            .nav-container {
+                padding: 0;
+            }
+
+            nav {
+                padding: 0.75rem 1rem;
+            }
+
+            .logo {
+                font-size: 1.25rem;
+            }
+
+            .nav-cta {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            .nav-cta svg {
+                margin-right: 0;
+            }
+
+            .nav-cta-text {
+                display: none;
+            }
+
+            /* Hero */
+            .hero {
+                min-height: auto;
+                padding: 5.5rem 1rem 3rem;
+            }
+
+            .hero-content {
+                max-width: 100%;
+            }
+
+            h1 {
+                font-size: clamp(1.75rem, 7vw, 2.5rem);
+                line-height: 1.2;
+                margin-bottom: 1rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .badge {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.8rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+
+            .hero-buttons .btn {
+                width: 100%;
+                text-align: center;
+                padding: 0.875rem 1.5rem;
+                justify-content: center;
+            }
+
+            /* Stats */
+            .stats {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1.5rem;
+                margin-top: 2.5rem;
+                padding-top: 2.5rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .stat-label {
+                font-size: 0.8rem;
+            }
+
+            /* Sections */
+            .features,
+            .self-host,
+            .endpoints,
+            .code-section {
+                padding: 3rem 1rem;
+            }
+
+            .section-header {
+                margin-bottom: 2rem;
+            }
+
+            /* Features Grid */
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .feature-card {
+                padding: 1.5rem;
+            }
+
+            .feature-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .feature-card h3 {
+                font-size: 1.1rem;
+            }
+
+            .feature-card p {
+                font-size: 0.9rem;
+            }
+
+            /* Self-Host */
+            .self-host-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .self-host-content h3 {
+                font-size: 1.5rem;
+            }
+
+            .self-host-content p {
+                font-size: 1rem;
+            }
+
+            .self-host-benefits li {
+                font-size: 0.9rem;
+                padding: 0.6rem 0;
+            }
+
+            .deploy-card {
+                padding: 1rem;
+            }
+
+            .deploy-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }
+
+            .deploy-info h4 {
+                font-size: 0.9rem;
+            }
+
+            .deploy-info p {
+                font-size: 0.8rem;
+            }
+
+            /* Terminal */
+            .terminal-window {
+                border-radius: 12px;
+            }
+
+            .terminal-body {
+                padding: 1rem;
+                font-size: 0.75rem;
+                line-height: 1.6;
+            }
+
+            /* Endpoints */
+            .endpoints-container {
+                max-width: 100%;
+            }
+
+            .endpoint-group {
+                margin-bottom: 2rem;
+            }
+
+            .endpoint-group h3 {
+                font-size: 1.1rem;
+            }
+
+            .endpoint {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 0.875rem;
+                gap: 0.4rem;
+            }
+
+            .endpoint-path {
+                font-size: 0.85rem;
+                word-break: break-all;
+            }
+
+            .endpoint-desc {
+                margin-left: 0;
+                font-size: 0.8rem;
+                white-space: normal;
+            }
+
+            .method {
+                font-size: 0.7rem;
+                padding: 0.25rem 0.5rem;
+                min-width: 50px;
+            }
+
+            /* Code Section */
+            .code-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                padding-bottom: 0.25rem;
+            }
+
+            .code-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .code-tab {
+                padding: 0.6rem 1rem;
+                font-size: 0.8rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* File Tabs */
+            .file-tab {
+                padding: 0.6rem 1rem;
+                font-size: 0.7rem;
+            }
+
+            .file-tab::before {
+                width: 6px;
+                height: 6px;
+                margin-right: 6px;
+            }
+
+            .file-content {
+                padding: 1rem;
+            }
+
+            .file-content pre {
+                font-size: 0.75rem;
+                line-height: 1.5;
+            }
+
+            .file-description {
+                font-size: 0.8rem;
+            }
+
+            /* CTA */
+            .cta {
+                padding: 4rem 1rem;
+            }
+
+            .cta .hero-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .cta .hero-buttons .btn {
+                width: 100%;
+            }
+
+            /* Footer */
+            footer {
+                padding: 2rem 1rem;
+            }
+
+            footer p {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 480px) {
+            .hero {
+                padding: 5rem 0.75rem 2rem;
+            }
+
+            .btn {
+                padding: 0.75rem 1.25rem;
+                font-size: 0.9rem;
+            }
+
+            .stats {
+                gap: 1rem;
+            }
+
+            .stat-value {
+                font-size: 1.75rem;
+            }
+
+            .feature-card {
+                padding: 1.25rem;
+            }
+
+            .terminal-body {
+                font-size: 0.65rem;
+                padding: 0.75rem;
+            }
+
+            .file-content pre {
+                font-size: 0.7rem;
+            }
+
+            .endpoint {
+                padding: 0.75rem;
+            }
+
+            .endpoint-path {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Landscape orientation fix */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .hero {
+                min-height: auto;
+                padding: 5rem 1rem 2rem;
+            }
+
+            .stats {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                display: flex;
+            }
+
+            .stat {
+                flex: 0 0 auto;
+            }
+        }
+
+        /* Touch device improvements */
+        @media (hover: none) and (pointer: coarse) {
+
+            .feature-card:hover,
+            .deploy-card:hover {
+                transform: none;
+            }
+
+            .btn:hover {
+                transform: none;
+            }
+
+            .nav-cta:hover {
+                transform: none;
+            }
+
+            .feature-card:active {
+                border-color: var(--primary);
+            }
+
+            .btn-primary:active {
+                box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+            }
+
+            .deploy-card:active {
+                border-color: var(--primary);
+                background: var(--bg-card-hover);
+            }
+        }
+
+        /* Prevent horizontal overflow globally */
+        main,
+        section,
+        .features,
+        .endpoints,
+        .code-section,
+        .self-host,
+        .cta {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        /* Allow horizontal scroll inside code blocks only */
+        .file-content,
+        .terminal-body,
+        .code-content {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body itemscope itemtype="https://schema.org/WebPage">
+    <div class="bg-animation" aria-hidden="true"></div>
+
+    <a href="#main-content" class="skip-link"
+        style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">Skip to main content</a>
+
+    <header>
+        <nav role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <a href="/" class="logo" aria-label="Datamio API Home">Datamio API</a>
+                <ul class="nav-links" role="menubar">
+                    <li role="none"><a href="#features" role="menuitem">Features</a></li>
+                    <li role="none"><a href="#self-host" role="menuitem">Self-Host</a></li>
+                    <li role="none"><a href="#endpoints" role="menuitem">API</a></li>
+                    <li role="none"><a href="/docs" role="menuitem">Docs</a></li>
+                    <li role="none"><a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank"
+                            rel="noopener noreferrer" role="menuitem"
+                            aria-label="View on GitHub (opens in new tab)">GitHub</a></li>
+                </ul>
+                <button class="mobile-menu-btn" aria-label="Toggle mobile menu" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" rel="noopener noreferrer"
+                    class="nav-cta" aria-label="Star on GitHub (opens in new tab)">
+                    <svg style="width:16px;height:16px;margin-right:6px;vertical-align:middle" viewBox="0 0 24 24"
+                        fill="currentColor" aria-hidden="true">
+                        <path
+                            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                    </svg>
+                    <span class="nav-cta-text">Star on GitHub</span>
+                </a>
+            </div>
+        </nav>
+        <div class="mobile-nav" role="menu" aria-label="Mobile navigation">
+            <a href="#features" role="menuitem">Features</a>
+            <a href="#self-host" role="menuitem">Self-Host</a>
+            <a href="#endpoints" role="menuitem">API</a>
+            <a href="/docs" role="menuitem">Docs</a>
+            <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" rel="noopener noreferrer"
+                role="menuitem">GitHub</a>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-content">
+                <div class="badge" role="status">Open Source & Self-Hostable</div>
+                <h1 id="hero-title" itemprop="headline">Powerful <span>Audio Processing</span> API Platform</h1>
+                <p itemprop="description">Split audio files, detect speech segments, and upload datasets to Hugging
+                    Face. Open-source, self-hostable, and built for developers who value control.</p>
+                <div class="hero-buttons">
+                    <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" class="btn btn-primary">
+                        <svg style="width:18px;height:18px;margin-right:8px;vertical-align:middle" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                        </svg>
+                        View on GitHub
+                    </a>
+                    <a href="/docs" class="btn btn-secondary">Explore API Docs</a>
+                    <a href="#self-host" class="btn btn-secondary">Self-Host Guide</a>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">Open Source</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">15+</div>
+                        <div class="stat-label">API Endpoints</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">1-Click</div>
+                        <div class="stat-label">Self-Host Deploy</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">MIT</div>
+                        <div class="stat-label">License</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features" aria-labelledby="features-title">
+            <div class="section-header">
+                <h2 id="features-title">Powerful Features</h2>
+                <p>Everything you need to process audio files and manage datasets at scale</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎵</div>
+                    <h3>Audio Splitting</h3>
+                    <p>Automatically split audio files by silence detection using advanced VAD (Voice Activity
+                        Detection) algorithms. Perfect for creating training datasets.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Batch Processing</h3>
+                    <p>Process multiple audio files simultaneously with our efficient batch endpoints. Track progress
+                        with real-time job status updates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤗</div>
+                    <h3>Hugging Face Integration</h3>
+                    <p>Seamlessly upload your processed audio datasets directly to Hugging Face Hub. Public or private
+                        repositories supported.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Async Job Processing</h3>
+                    <p>Long-running tasks are handled asynchronously. Submit jobs and check their status without
+                        blocking your application.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>API Key Management</h3>
+                    <p>Secure your API with key-based authentication. Generate, revoke, and manage API keys with full
+                        admin controls.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Progress Tracking</h3>
+                    <p>Monitor job progress in real-time with detailed status updates, segment counts, and comprehensive
+                        error reporting.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="self-host" id="self-host" aria-labelledby="self-host-title">
+            <div class="self-host-container">
+                <div class="section-header">
+                    <h2 id="self-host-title">Self-Host Your Instance</h2>
+                    <p>Full control over your data. Deploy anywhere in minutes.</p>
+                </div>
+                <div class="self-host-grid">
+                    <div class="self-host-content">
+                        <h3>Why Self-Host?</h3>
+                        <p>Take complete ownership of your audio processing infrastructure. No vendor lock-in, no usage
+                            limits, no data leaving your servers.</p>
+                        <ul class="self-host-benefits">
+                            <li>
+                                <span class="benefit-icon">&#10003;</span>
+                                <span><strong>Data Privacy</strong> - Your audio files never leave your
+                                    infrastructure</span>
+                            </li>
+                            <li>
+                                <span class="benefit-icon">&#10003;</span>
+                                <span><strong>No Rate Limits</strong> - Process as many files as your hardware
+                                    allows</span>
+                            </li>
+                            <li>
+                                <span class="benefit-icon">&#10003;</span>
+                                <span><strong>Full Customization</strong> - Modify and extend the codebase freely</span>
+                            </li>
+                            <li>
+                                <span class="benefit-icon">&#10003;</span>
+                                <span><strong>Cost Effective</strong> - Run on your existing infrastructure</span>
+                            </li>
+                            <li>
+                                <span class="benefit-icon">&#10003;</span>
+                                <span><strong>MIT Licensed</strong> - Use commercially without restrictions</span>
+                            </li>
+                        </ul>
+                        <div class="deploy-options">
+                            <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" class="deploy-card">
+                                <div class="deploy-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                                    </svg>
+                                </div>
+                                <div class="deploy-info">
+                                    <h4>Clone from GitHub</h4>
+                                    <p>Get the full source code and documentation</p>
+                                </div>
+                                <span class="deploy-arrow">&rarr;</span>
+                            </a>
+                            <a href="https://github.com/jsbeaudry/datamio-py-api#docker" target="_blank"
+                                class="deploy-card">
+                                <div class="deploy-icon">&#128051;</div>
+                                <div class="deploy-info">
+                                    <h4>Docker Deploy</h4>
+                                    <p>One-command deployment with Docker Compose</p>
+                                </div>
+                                <span class="deploy-arrow">&rarr;</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-dot"></div>
+                            <div class="terminal-dot"></div>
+                            <div class="terminal-dot"></div>
+                            <span class="terminal-title">Quick Start</span>
+                        </div>
+                        <div class="terminal-body">
+                            <div class="terminal-line">
+                                <span class="terminal-comment"># Clone the repository</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span>
+                                <span class="terminal-command">git clone
+                                    https://github.com/jsbeaudry/datamio-py-api.git</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span>
+                                <span class="terminal-command">cd datamio-py-api</span>
+                            </div>
+                            <br>
+                            <div class="terminal-line">
+                                <span class="terminal-comment"># Install dependencies</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span>
+                                <span class="terminal-command">pip install -r requirements.txt</span>
+                            </div>
+                            <br>
+                            <div class="terminal-line">
+                                <span class="terminal-comment"># Start the server</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span>
+                                <span class="terminal-command">python server.py</span>
+                            </div>
+                            <br>
+                            <div class="terminal-line">
+                                <span class="terminal-comment"># Or use Docker</span>
+                            </div>
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span>
+                                <span class="terminal-command">docker-compose up -d</span>
+                            </div>
+                            <br>
+                            <div class="terminal-line">
+                                <span class="terminal-comment" style="color: #10b981;"># Server running at
+                                    http://localhost:8001</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="endpoints" id="endpoints" aria-labelledby="endpoints-title">
+            <div class="endpoints-container">
+                <div class="section-header">
+                    <h2 id="endpoints-title">API Endpoints</h2>
+                    <p>RESTful API design with comprehensive documentation</p>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🎵 Audio Splitting</h3>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/splits/file</span>
+                        <span class="endpoint-desc">Split single audio file</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/splits/batch</span>
+                        <span class="endpoint-desc">Split multiple audio files</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/splits/file/job</span>
+                        <span class="endpoint-desc">Create async split job</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/splits/batch/job</span>
+                        <span class="endpoint-desc">Create async batch job</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/splits/job/{job_id}</span>
+                        <span class="endpoint-desc">Get job status</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🤗 Hugging Face Upload</h3>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/upload-audio-dataset</span>
+                        <span class="endpoint-desc">Upload dataset to HF</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/job/{job_id}</span>
+                        <span class="endpoint-desc">Get upload job status</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🔐 API Key Management</h3>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/keys</span>
+                        <span class="endpoint-desc">Generate new API key</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/keys</span>
+                        <span class="endpoint-desc">List all API keys</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/keys/{key_id}</span>
+                        <span class="endpoint-desc">Delete API key</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="code-section" id="code" aria-labelledby="code-title">
+            <div class="section-header">
+                <h2 id="code-title">Quick Start Examples</h2>
+                <p>Get started with just a few lines of code</p>
+            </div>
+
+            <div class="code-tabs-container">
+                <div class="code-tabs">
+                    <button class="code-tab active" onclick="showTab('python')">Python</button>
+                    <button class="code-tab" onclick="showTab('curl')">cURL</button>
+                    <button class="code-tab" onclick="showTab('javascript')">JavaScript</button>
+                    <button class="code-tab" onclick="showTab('async')">Async Jobs</button>
+                </div>
+
+                <!-- Python Examples -->
+                <div id="python" class="code-panel active">
+                    <div class="file-tabs-container">
+                        <div class="file-tabs">
+                            <button class="file-tab active"
+                                onclick="showFileTab('python', 'py-split')">split_audio.py</button>
+                            <button class="file-tab"
+                                onclick="showFileTab('python', 'py-batch')">batch_process.py</button>
+                            <button class="file-tab"
+                                onclick="showFileTab('python', 'py-upload')">upload_dataset.py</button>
+                        </div>
+                        <div id="py-split" class="file-content active">
+                            <p class="file-description">Split a single audio file into speech segments using VAD</p>
+                            <pre><span class="code-keyword">import</span> requests
+
+response = requests.<span class="code-function">post</span>(
+    <span class="code-string">"http://localhost:8001/api/splits/file"</span>,
+    headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-api-key"</span>},
+    json={
+        <span class="code-string">"audio_url"</span>: <span class="code-string">"https://example.com/audio.wav"</span>,
+        <span class="code-string">"threshold"</span>: <span class="code-variable">0.5</span>,
+        <span class="code-string">"min_speech_duration_ms"</span>: <span class="code-variable">250</span>
+    }
+)
+
+segments = response.<span class="code-function">json</span>()[<span class="code-string">"segments"</span>]
+<span class="code-keyword">for</span> seg <span class="code-keyword">in</span> segments:
+    <span class="code-keyword">print</span>(<span class="code-string">f"Segment: {seg['start']:.2f}s - {seg['end']:.2f}s"</span>)
+    <span class="code-keyword">print</span>(<span class="code-string">f"  URL: {seg['url']}"</span>)</pre>
+                        </div>
+                        <div id="py-batch" class="file-content">
+                            <p class="file-description">Process multiple audio files in a single batch request</p>
+                            <pre><span class="code-keyword">import</span> requests
+
+audio_files = [
+    <span class="code-string">"https://example.com/audio1.wav"</span>,
+    <span class="code-string">"https://example.com/audio2.wav"</span>,
+    <span class="code-string">"https://example.com/audio3.wav"</span>
+]
+
+response = requests.<span class="code-function">post</span>(
+    <span class="code-string">"http://localhost:8001/api/splits/batch"</span>,
+    headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-api-key"</span>},
+    json={<span class="code-string">"audio_urls"</span>: audio_files}
+)
+
+results = response.<span class="code-function">json</span>()[<span class="code-string">"results"</span>]
+<span class="code-keyword">for</span> url, data <span class="code-keyword">in</span> results.items():
+    <span class="code-keyword">print</span>(<span class="code-string">f"{url}: {data['count']} segments"</span>)</pre>
+                        </div>
+                        <div id="py-upload" class="file-content">
+                            <p class="file-description">Upload processed audio dataset to Hugging Face Hub</p>
+                            <pre><span class="code-keyword">import</span> requests
+
+dataset = [
+    {<span class="code-string">"audio"</span>: <span class="code-string">"https://example.com/audio1.wav"</span>, <span class="code-string">"text"</span>: <span class="code-string">"Hello world"</span>},
+    {<span class="code-string">"audio"</span>: <span class="code-string">"https://example.com/audio2.wav"</span>, <span class="code-string">"text"</span>: <span class="code-string">"How are you"</span>}
+]
+
+response = requests.<span class="code-function">post</span>(
+    <span class="code-string">"http://localhost:8001/api/upload-audio-dataset"</span>,
+    headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-api-key"</span>},
+    json={
+        <span class="code-string">"dataset"</span>: dataset,
+        <span class="code-string">"datasetName"</span>: <span class="code-string">"my-audio-dataset"</span>,
+        <span class="code-string">"token"</span>: <span class="code-string">"hf_your_token"</span>,
+        <span class="code-string">"isPrivate"</span>: <span class="code-variable">True</span>
+    }
+)
+
+job_id = response.<span class="code-function">json</span>()[<span class="code-string">"job_id"</span>]
+<span class="code-keyword">print</span>(<span class="code-string">f"Upload job started: {job_id}"</span>)</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- cURL Examples -->
+                <div id="curl" class="code-panel">
+                    <div class="file-tabs-container">
+                        <div class="file-tabs">
+                            <button class="file-tab active"
+                                onclick="showFileTab('curl', 'curl-split')">split_audio.sh</button>
+                            <button class="file-tab"
+                                onclick="showFileTab('curl', 'curl-status')">check_status.sh</button>
+                            <button class="file-tab" onclick="showFileTab('curl', 'curl-keys')">api_keys.sh</button>
+                        </div>
+                        <div id="curl-split" class="file-content active">
+                            <p class="file-description">Split a single audio file using cURL</p>
+                            <pre><span class="code-comment"># Split a single audio file</span>
+curl -X POST http://localhost:8001/api/splits/file \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -H <span class="code-string">"X-API-Key: your-api-key"</span> \
+  -d <span class="code-string">'{
+    "audio_url": "https://example.com/audio.wav",
+    "threshold": 0.5,
+    "min_speech_duration_ms": 250,
+    "output_format": "wav"
+  }'</span>
+
+<span class="code-comment"># Batch process multiple files</span>
+curl -X POST http://localhost:8001/api/splits/batch \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -H <span class="code-string">"X-API-Key: your-api-key"</span> \
+  -d <span class="code-string">'{"audio_urls": ["url1.wav", "url2.wav"]}'</span></pre>
+                        </div>
+                        <div id="curl-status" class="file-content">
+                            <p class="file-description">Check API health and job status</p>
+                            <pre><span class="code-comment"># Check API health status</span>
+curl http://localhost:8001/api/health
+
+<span class="code-comment"># Get split job status</span>
+curl -H <span class="code-string">"X-API-Key: your-api-key"</span> \
+  http://localhost:8001/api/splits/job/<span class="code-variable">{job_id}</span>
+
+<span class="code-comment"># Get upload job status</span>
+curl -H <span class="code-string">"X-API-Key: your-api-key"</span> \
+  http://localhost:8001/api/job/<span class="code-variable">{job_id}</span>
+
+<span class="code-comment"># List all jobs (admin only)</span>
+curl -H <span class="code-string">"X-API-Key: admin-api-key"</span> \
+  http://localhost:8001/api/splits/jobs</pre>
+                        </div>
+                        <div id="curl-keys" class="file-content">
+                            <p class="file-description">Manage API keys (requires admin privileges)</p>
+                            <pre><span class="code-comment"># Create a new API key</span>
+curl -X POST http://localhost:8001/api/keys \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -H <span class="code-string">"X-API-Key: admin-api-key"</span> \
+  -d <span class="code-string">'{"name": "my-app", "description": "Production key"}'</span>
+
+<span class="code-comment"># List all API keys</span>
+curl -H <span class="code-string">"X-API-Key: admin-api-key"</span> \
+  http://localhost:8001/api/keys
+
+<span class="code-comment"># Revoke an API key</span>
+curl -X POST -H <span class="code-string">"X-API-Key: admin-api-key"</span> \
+  http://localhost:8001/api/keys/<span class="code-variable">{key_id}</span>/revoke
+
+<span class="code-comment"># Delete an API key</span>
+curl -X DELETE -H <span class="code-string">"X-API-Key: admin-api-key"</span> \
+  http://localhost:8001/api/keys/<span class="code-variable">{key_id}</span></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JavaScript Examples -->
+                <div id="javascript" class="code-panel">
+                    <div class="file-tabs-container">
+                        <div class="file-tabs">
+                            <button class="file-tab active"
+                                onclick="showFileTab('javascript', 'js-split')">split.js</button>
+                            <button class="file-tab" onclick="showFileTab('javascript', 'js-batch')">batch.js</button>
+                            <button class="file-tab" onclick="showFileTab('javascript', 'js-poll')">poll.js</button>
+                        </div>
+                        <div id="js-split" class="file-content active">
+                            <p class="file-description">Split audio file using the Fetch API</p>
+                            <pre><span class="code-keyword">const</span> response = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(<span class="code-string">'http://localhost:8001/api/splits/file'</span>, {
+  method: <span class="code-string">'POST'</span>,
+  headers: {
+    <span class="code-string">'Content-Type'</span>: <span class="code-string">'application/json'</span>,
+    <span class="code-string">'X-API-Key'</span>: <span class="code-string">'your-api-key'</span>
+  },
+  body: JSON.<span class="code-function">stringify</span>({
+    audio_url: <span class="code-string">'https://example.com/audio.wav'</span>,
+    threshold: <span class="code-variable">0.5</span>,
+    min_speech_duration_ms: <span class="code-variable">250</span>
+  })
+});
+
+<span class="code-keyword">const</span> { segments } = <span class="code-keyword">await</span> response.<span class="code-function">json</span>();
+console.<span class="code-function">log</span>(<span class="code-string">`Found </span><span class="code-variable">${segments.length}</span><span class="code-string"> segments`</span>);
+
+segments.<span class="code-function">forEach</span>((seg, i) => {
+  console.<span class="code-function">log</span>(<span class="code-string">`  ${i + 1}. ${seg.start}s - ${seg.end}s`</span>);
+});</pre>
+                        </div>
+                        <div id="js-batch" class="file-content">
+                            <p class="file-description">Process multiple audio files with async batch job</p>
+                            <pre><span class="code-keyword">async function</span> <span class="code-function">processBatch</span>(audioUrls) {
+  <span class="code-comment">// Create async batch job</span>
+  <span class="code-keyword">const</span> response = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(<span class="code-string">'http://localhost:8001/api/splits/batch/job'</span>, {
+    method: <span class="code-string">'POST'</span>,
+    headers: {
+      <span class="code-string">'Content-Type'</span>: <span class="code-string">'application/json'</span>,
+      <span class="code-string">'X-API-Key'</span>: <span class="code-string">'your-api-key'</span>
+    },
+    body: JSON.<span class="code-function">stringify</span>({ audio_urls: audioUrls })
+  });
+
+  <span class="code-keyword">const</span> { job_id } = <span class="code-keyword">await</span> response.<span class="code-function">json</span>();
+  console.<span class="code-function">log</span>(<span class="code-string">`Batch job created: ${job_id}`</span>);
+  <span class="code-keyword">return</span> job_id;
+}
+
+<span class="code-comment">// Usage</span>
+<span class="code-keyword">const</span> jobId = <span class="code-keyword">await</span> <span class="code-function">processBatch</span>([<span class="code-string">'url1.wav'</span>, <span class="code-string">'url2.wav'</span>]);</pre>
+                        </div>
+                        <div id="js-poll" class="file-content">
+                            <p class="file-description">Poll for job completion with status updates</p>
+                            <pre><span class="code-keyword">async function</span> <span class="code-function">waitForJob</span>(jobId, onProgress) {
+  <span class="code-keyword">while</span> (<span class="code-variable">true</span>) {
+    <span class="code-keyword">const</span> res = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(
+      <span class="code-string">`http://localhost:8001/api/splits/job/${jobId}`</span>,
+      { headers: { <span class="code-string">'X-API-Key'</span>: <span class="code-string">'your-api-key'</span> } }
+    );
+    <span class="code-keyword">const</span> job = <span class="code-keyword">await</span> res.<span class="code-function">json</span>();
+
+    <span class="code-comment">// Report progress</span>
+    onProgress?.(job.status, job.message);
+
+    <span class="code-keyword">if</span> (job.status === <span class="code-string">'completed'</span>) <span class="code-keyword">return</span> job.result;
+    <span class="code-keyword">if</span> (job.status === <span class="code-string">'failed'</span>) <span class="code-keyword">throw new</span> Error(job.error);
+
+    <span class="code-keyword">await new</span> Promise(r => <span class="code-function">setTimeout</span>(r, <span class="code-variable">1000</span>));
+  }
+}
+
+<span class="code-comment">// Usage</span>
+<span class="code-keyword">const</span> result = <span class="code-keyword">await</span> <span class="code-function">waitForJob</span>(jobId, (status, msg) => {
+  console.<span class="code-function">log</span>(<span class="code-string">`[${status}] ${msg}`</span>);
+});</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Async Job Examples -->
+                <div id="async" class="code-panel">
+                    <div class="file-tabs-container">
+                        <div class="file-tabs">
+                            <button class="file-tab active"
+                                onclick="showFileTab('async', 'async-create')">create_job.py</button>
+                            <button class="file-tab"
+                                onclick="showFileTab('async', 'async-poll')">poll_status.py</button>
+                            <button class="file-tab"
+                                onclick="showFileTab('async', 'async-full')">full_workflow.py</button>
+                        </div>
+                        <div id="async-create" class="file-content active">
+                            <p class="file-description">Create an async job that returns immediately with a job ID</p>
+                            <pre><span class="code-keyword">import</span> requests
+
+<span class="code-comment"># Create async job for single file (returns immediately)</span>
+response = requests.<span class="code-function">post</span>(
+    <span class="code-string">"http://localhost:8001/api/splits/file/job"</span>,
+    headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-api-key"</span>},
+    json={
+        <span class="code-string">"audio_url"</span>: <span class="code-string">"https://example.com/long-audio.wav"</span>,
+        <span class="code-string">"threshold"</span>: <span class="code-variable">0.5</span>
+    }
+)
+
+job = response.<span class="code-function">json</span>()
+<span class="code-keyword">print</span>(<span class="code-string">f"Job ID: {job['job_id']}"</span>)
+<span class="code-keyword">print</span>(<span class="code-string">f"Status: {job['status']}"</span>)
+
+<span class="code-comment"># For batch processing, use /api/splits/batch/job instead</span></pre>
+                        </div>
+                        <div id="async-poll" class="file-content">
+                            <p class="file-description">Poll job status until completion with progress updates</p>
+                            <pre><span class="code-keyword">import</span> requests
+<span class="code-keyword">import</span> time
+
+job_id = <span class="code-string">"your-job-id"</span>
+
+<span class="code-comment"># Poll for job completion</span>
+<span class="code-keyword">while</span> <span class="code-variable">True</span>:
+    status = requests.<span class="code-function">get</span>(
+        <span class="code-string">f"http://localhost:8001/api/splits/job/{job_id}"</span>,
+        headers={<span class="code-string">"X-API-Key"</span>: <span class="code-string">"your-api-key"</span>}
+    ).<span class="code-function">json</span>()
+
+    <span class="code-keyword">print</span>(<span class="code-string">f"[{status['status']}] {status['message']}"</span>)
+
+    <span class="code-keyword">if</span> status[<span class="code-string">"status"</span>] == <span class="code-string">"completed"</span>:
+        segments = status[<span class="code-string">"result"</span>][<span class="code-string">"segments"</span>]
+        <span class="code-keyword">print</span>(<span class="code-string">f"Done! Found {len(segments)} segments"</span>)
+        <span class="code-keyword">break</span>
+    <span class="code-keyword">elif</span> status[<span class="code-string">"status"</span>] == <span class="code-string">"failed"</span>:
+        <span class="code-keyword">print</span>(<span class="code-string">f"Error: {status['error']}"</span>)
+        <span class="code-keyword">break</span>
+
+    time.<span class="code-function">sleep</span>(<span class="code-variable">2</span>)  <span class="code-comment"># Poll every 2 seconds</span></pre>
+                        </div>
+                        <div id="async-full" class="file-content">
+                            <p class="file-description">Complete reusable workflow: create job, poll, and return results
+                            </p>
+                            <pre><span class="code-keyword">import</span> requests
+<span class="code-keyword">import</span> time
+
+<span class="code-keyword">def</span> <span class="code-function">process_audio_async</span>(audio_url, api_key, poll_interval=<span class="code-variable">1</span>):
+    <span class="code-comment"># Process audio file asynchronously and wait for results</span>
+
+    <span class="code-comment"># Create the job</span>
+    job = requests.<span class="code-function">post</span>(
+        <span class="code-string">"http://localhost:8001/api/splits/file/job"</span>,
+        headers={<span class="code-string">"X-API-Key"</span>: api_key},
+        json={<span class="code-string">"audio_url"</span>: audio_url}
+    ).<span class="code-function">json</span>()
+
+    job_id = job[<span class="code-string">"job_id"</span>]
+    <span class="code-keyword">print</span>(<span class="code-string">f"Created job: {job_id}"</span>)
+
+    <span class="code-comment"># Poll until completion</span>
+    <span class="code-keyword">while</span> <span class="code-variable">True</span>:
+        status = requests.<span class="code-function">get</span>(
+            <span class="code-string">f"http://localhost:8001/api/splits/job/{job_id}"</span>,
+            headers={<span class="code-string">"X-API-Key"</span>: api_key}
+        ).<span class="code-function">json</span>()
+
+        <span class="code-keyword">if</span> status[<span class="code-string">"status"</span>] == <span class="code-string">"completed"</span>:
+            <span class="code-keyword">return</span> status[<span class="code-string">"result"</span>]
+        <span class="code-keyword">elif</span> status[<span class="code-string">"status"</span>] == <span class="code-string">"failed"</span>:
+            <span class="code-keyword">raise</span> Exception(status[<span class="code-string">"error"</span>])
+
+        time.<span class="code-function">sleep</span>(poll_interval)
+
+<span class="code-comment"># Usage</span>
+result = <span class="code-function">process_audio_async</span>(<span class="code-string">"https://example.com/audio.wav"</span>, <span class="code-string">"your-key"</span>)
+<span class="code-keyword">print</span>(<span class="code-string">f"Got {result['count']} segments"</span>)</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta" aria-labelledby="cta-title">
+            <h2 id="cta-title">Ready to Self-Host?</h2>
+            <p>Clone the repository, deploy in minutes, and take full control of your audio processing pipeline.</p>
+            <div class="hero-buttons" style="margin-top: 0;">
+                <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" rel="noopener noreferrer"
+                    class="btn btn-primary" aria-label="Get Started on GitHub (opens in new tab)">
+                    <svg style="width:18px;height:18px;margin-right:8px;vertical-align:middle" viewBox="0 0 24 24"
+                        fill="currentColor" aria-hidden="true">
+                        <path
+                            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                    </svg>
+                    Get Started on GitHub
+                </a>
+                <a href="/docs" class="btn btn-secondary">View API Docs</a>
+            </div>
+        </section>
+    </main>
+
+    <footer role="contentinfo" itemscope itemtype="https://schema.org/WPFooter">
+        <p>
+            <span itemprop="license">Open Source &bull; MIT License</span> &bull;
+            <a href="https://github.com/jsbeaudry/datamio-py-api" target="_blank" rel="noopener noreferrer"
+                itemprop="url">GitHub</a> &bull;
+            <a href="/docs">API Docs</a> &bull;
+            <a href="/api/health">Health Check</a>
+        </p>
+        <p style="margin-top: 1rem; font-size: 0.8rem;">
+            Built with <a href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer">FastAPI</a>
+            &bull; Made with love for the developer community
+        </p>
+        <p style="margin-top: 0.5rem; font-size: 0.75rem;">
+            <span itemprop="copyrightYear">2024</span> Datamio. Open source under MIT License.
+        </p>
+    </footer>
+
+    <script>
+        // Tab switching for language tabs
+        function showTab(tabId) {
+            document.querySelectorAll('.code-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('.code-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Tab switching for file tabs within each language panel
+        function showFileTab(panelId, fileId) {
+            const panel = document.getElementById(panelId);
+            panel.querySelectorAll('.file-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            panel.querySelectorAll('.file-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(fileId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Mobile menu toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileNav = document.querySelector('.mobile-nav');
+
+        mobileMenuBtn.addEventListener('click', function () {
+            this.classList.toggle('active');
+            mobileNav.classList.toggle('active');
+            const isExpanded = this.classList.contains('active');
+            this.setAttribute('aria-expanded', isExpanded);
+        });
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-nav a').forEach(link => {
+            link.addEventListener('click', function () {
+                mobileMenuBtn.classList.remove('active');
+                mobileNav.classList.remove('active');
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!mobileNav.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                mobileMenuBtn.classList.remove('active');
+                mobileNav.classList.remove('active');
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Navbar background on scroll
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.style.background = 'rgba(15, 23, 42, 0.95)';
+            } else {
+                nav.style.background = 'rgba(15, 23, 42, 0.8)';
+            }
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .endpoint-group, .code-block, .self-host-content, .terminal-window, .deploy-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+
+</html>

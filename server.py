@@ -4,6 +4,7 @@ Using async job processing with job tracking
 """
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from pathlib import Path
@@ -617,38 +618,24 @@ async def delete_key(key_id: str, auth: Dict = Depends(require_api_key)):
     raise HTTPException(status_code=404, detail=f"API key {key_id} not found")
 
 
-@app.get("/")
-async def root():
+@app.get("/api/health")
+async def health():
     """API health check"""
     return {
         "status": "healthy",
         "total_hg_jobs": len(jobs_db),
         "total_split_jobs": len(splits_jobs_db),
-        "endpoints": {
-            "splits_file": "POST /api/splits/file",
-            "splits_batch": "POST /api/splits/batch",
-            
-            "splits_file_job": "POST /api/splits/file/job",
-            "splits_batch_job": "POST /api/splits/batch/job",
-            
-            "get_split_job": "GET /api/splits/job/{job_id}",
-            "get_all_split_jobs": "GET /api/splits/jobs?user_id=default",
-            
-            "delete_split_job": "DELETE /api/splits/job/{job_id}",
-            
-            "upload_dataset_job": "POST /api/upload-audio-dataset",
-            "get_hg_job": "GET /api/job/{job_id}",
-            "get_all_hg_jobs": "GET /api/jobs?user_id=default",
-            "delete_hg_job": "DELETE /api/job/{job_id}",
-
-            "create_api_key": "POST /api/keys",
-            "list_api_keys": "GET /api/keys",
-            "get_api_key": "GET /api/keys/{key_id}",
-            "revoke_api_key": "POST /api/keys/{key_id}/revoke",
-            "delete_api_key": "DELETE /api/keys/{key_id}",
-        },
-        "auth": "All endpoints except GET / require X-API-Key header. POST /api/keys requires admin key."
     }
+
+
+@app.get("/", response_class=HTMLResponse)
+async def landing_page():
+    """Beautiful landing page for Datamio API - served from templates/index.html"""
+    html_file = Path(__file__).parent / "templates" / "index.html"
+    html_content = html_file.read_text()
+    return HTMLResponse(content=html_content)
+
+
 
 
 if __name__ == "__main__":
