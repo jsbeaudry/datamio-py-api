@@ -91,6 +91,21 @@ components:
           type: boolean
           default: false
           description: Return absolute file paths instead of relative
+        webhookUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to receive webhook notifications for job status changes
+          example: https://example.com/webhook
+        transcription:
+          type: boolean
+          default: false
+          description: Enable transcription of audio chunks using OpenAI Whisper
+        open_ai_key:
+          type: string
+          nullable: true
+          description: OpenAI API key for transcription (required if transcription is enabled)
+          example: sk-...
 
     BatchSplitsRequest:
       type: object
@@ -135,6 +150,21 @@ components:
           type: boolean
           default: false
           description: Return absolute file paths instead of relative
+        webhookUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to receive webhook notifications for job status changes
+          example: https://example.com/webhook
+        transcription:
+          type: boolean
+          default: false
+          description: Enable transcription of audio chunks using OpenAI Whisper
+        open_ai_key:
+          type: string
+          nullable: true
+          description: OpenAI API key for transcription (required if transcription is enabled)
+          example: sk-...
 
     AudioDatasetItem:
       type: object
@@ -201,6 +231,12 @@ components:
           type: integer
           default: 0
           description: Whether the dataset should be private (0=public, 1=private)
+        webhookUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to receive webhook notifications for job status changes
+          example: https://example.com/webhook
 
     CreateApiKeyRequest:
       type: object
@@ -288,6 +324,10 @@ components:
         url:
           type: string
           description: URL to the audio chunk
+        text:
+          type: string
+          nullable: true
+          description: Transcription text (only present when transcription is enabled)
 
     SplitsResponse:
       type: object
@@ -334,7 +374,9 @@ components:
           type: string
           enum:
             - pending
+            - downloading
             - splitting
+            - transcribing
             - completed
             - failed
         message:
@@ -402,13 +444,10 @@ components:
           example: healthy
         total_hg_jobs:
           type: integer
+          description: Number of Hugging Face upload jobs in memory
         total_split_jobs:
           type: integer
-        endpoints:
-          type: object
-        auth:
-          type: string
-          example: All endpoints except GET / require X-API-Key header. POST /api/keys requires admin key.
+          description: Number of audio split jobs in memory
 
     ErrorResponse:
       type: object
@@ -439,8 +478,24 @@ paths:
     get:
       tags:
         - Health
+      summary: Landing Page
+      description: Serves the API landing page (HTML). No authentication required.
+      operationId: landingPage
+      security: []
+      responses:
+        '200':
+          description: HTML landing page
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/health:
+    get:
+      tags:
+        - Health
       summary: API Health Check
-      description: Check API health and list available endpoints. No authentication required.
+      description: Check API health and get job counts. No authentication required.
       operationId: healthCheck
       security: []
       responses:

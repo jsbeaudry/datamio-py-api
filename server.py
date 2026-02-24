@@ -8,7 +8,8 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from pathlib import Path
-from services.hg import jobs_db, UploadAudioDatasetRequest, JobResponse, create_job, update_job, get_job, get_user_jobs, process_upload_job
+import asyncio
+from services.hg import jobs_db, UploadAudioDatasetRequest, JobResponse, JobStatus, create_job, update_job, get_job, get_user_jobs, process_upload_job
 from services.splits import (
     process_audio_file,
     splits_jobs_db,
@@ -18,6 +19,7 @@ from services.splits import (
     update_split_job,
     get_split_job,
     get_user_split_jobs,
+    transcribe_audio_chunks,
 )
 from services.auth import (
     require_api_key,
@@ -49,6 +51,9 @@ class SplitsRequest(BaseModel):
     speech_pad_ms: Optional[int] = 30
     output_format: Optional[str] = "wav"
     return_absolute_paths: Optional[bool] = False
+    webhookUrl: Optional[str] = None
+    transcription: Optional[bool] = False
+    open_ai_key: Optional[str] = None
 
 class BatchSplitsRequest(BaseModel):
     audio_urls: List[str]
@@ -59,118 +64,9 @@ class BatchSplitsRequest(BaseModel):
     speech_pad_ms: Optional[int] = 30
     output_format: Optional[str] = "wav"
     return_absolute_paths: Optional[bool] = False
-
-
-@app.post("/api/splits/file")
-async def splits_file(
-    request: SplitsRequest,
-    http_request: Request,
-    _: Dict = Depends(require_api_key)
-):
-    """
-    Split audio file by silence detection.
-    Accepts a URL to an audio file and returns segments with chunk file paths.
-    """
-    try:
-        print(f"Processing audio from: {request.audio_url}")
-        print("="*60)
-
-        segments = process_audio_file(
-            request.audio_url,
-            output_folder=request.output_folder,
-            threshold=request.threshold,
-            min_speech_duration_ms=request.min_speech_duration_ms,
-            min_silence_duration_ms=request.min_silence_duration_ms,
-            speech_pad_ms=request.speech_pad_ms,
-            output_format=request.output_format,
-            return_absolute_paths=request.return_absolute_paths
-        )
-
-        # Convert relative paths to full URLs
-        base_url = str(http_request.base_url).rstrip('/')
-        for segment in segments:
-            segment['url'] = f"{base_url}/{segment['url']}"
-
-        print(f"\n✓ Processed {len(segments)} segments")
-
-        return {"segments": segments, "count": len(segments)}
-
-    except HTTPException:
-        raise
-    except Exception as error:
-        import traceback
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "Failed to process audio file",
-                "details": str(error),
-                "stack": traceback.format_exc(),
-            }
-        )
-
-
-@app.post("/api/splits/batch")
-async def splits_batch(
-    request: BatchSplitsRequest,
-    http_request: Request,
-    _: Dict = Depends(require_api_key)
-):
-    """
-    Split multiple audio files by silence detection.
-    Accepts a list of URLs to audio files and returns segments for each.
-    """
-    try:
-        print(f"\nBatch processing {len(request.audio_urls)} audio files")
-        print("="*60)
-
-        base_url = str(http_request.base_url).rstrip('/')
-        results = {}
-
-        for i, audio_url in enumerate(request.audio_urls, 1):
-            print(f"\nProcessing file {i}/{len(request.audio_urls)}: {audio_url}")
-
-            # Extract filename from URL for output folder
-            from urllib.parse import urlparse
-            url_path = urlparse(audio_url).path
-            file_stem = Path(url_path).stem or f"audio_{i}"
-            output_folder = str(Path(request.output_base_folder) / file_stem)
-
-            try:
-                segments = process_audio_file(
-                    audio_url,
-                    output_folder=output_folder,
-                    threshold=request.threshold,
-                    min_speech_duration_ms=request.min_speech_duration_ms,
-                    min_silence_duration_ms=request.min_silence_duration_ms,
-                    speech_pad_ms=request.speech_pad_ms,
-                    output_format=request.output_format,
-                    return_absolute_paths=request.return_absolute_paths
-                )
-                # Convert relative paths to full URLs
-                for segment in segments:
-                    segment['url'] = f"{base_url}/{segment['url']}"
-                results[audio_url] = {"segments": segments, "count": len(segments), "status": "success"}
-                print(f"✓ Processed {len(segments)} segments")
-            except Exception as e:
-                results[audio_url] = {"segments": [], "count": 0, "status": "failed", "error": str(e)}
-                print(f"✗ Failed: {str(e)}")
-
-        print(f"\n✓ Batch processing complete: {len(results)} files processed")
-
-        return {"results": results, "total_files": len(results)}
-
-    except HTTPException:
-        raise
-    except Exception as error:
-        import traceback
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "Failed to process batch",
-                "details": str(error),
-                "stack": traceback.format_exc(),
-            }
-        )
+    webhookUrl: Optional[str] = None
+    transcription: Optional[bool] = False
+    open_ai_key: Optional[str] = None
 
 
 # ============== SPLITS JOB PROCESSING ==============
@@ -186,16 +82,21 @@ async def process_splits_file_job(
     output_format: str,
     return_absolute_paths: bool,
     base_url: str,
+    transcription: bool = False,
+    open_ai_key: str = None,
 ):
     """Background task to process single file splits job"""
     try:
+        # Splitting
         update_split_job(
             job_id,
             status=SplitJobStatus.SPLITTING,
-            message=f"Processing audio: {audio_url}",
+            message="Detecting speech segments with Silero VAD",
         )
 
-        segments = process_audio_file(
+        # Always use absolute paths internally (needed for transcription)
+        segments = await asyncio.to_thread(
+            process_audio_file,
             audio_url,
             output_folder=output_folder,
             threshold=threshold,
@@ -203,17 +104,43 @@ async def process_splits_file_job(
             min_silence_duration_ms=min_silence_duration_ms,
             speech_pad_ms=speech_pad_ms,
             output_format=output_format,
-            return_absolute_paths=return_absolute_paths
+            return_absolute_paths=True
         )
 
-        # Convert relative paths to full URLs
-        for segment in segments:
-            segment['url'] = f"{base_url}/{segment['url']}"
+        # Transcribe audio chunks if requested and API key is provided
+        if transcription and open_ai_key:
+            update_split_job(
+                job_id,
+                status=SplitJobStatus.TRANSCRIBING,
+                message="Transcribing audio chunks with OpenAI Whisper",
+                progress={"chunks_transcribed": 0, "total_chunks": len(segments)}
+            )
 
+            segments = await transcribe_audio_chunks(
+                segments,
+                open_ai_key,
+                job_id=job_id
+            )
+
+        # Convert paths to URLs or keep as absolute paths based on user preference
+        for segment in segments:
+            file_path = segment['url']
+            if return_absolute_paths:
+                # Keep the absolute path as-is
+                pass
+            else:
+                # Extract the relative path and convert to URL
+                if 'audio_chunks' in file_path:
+                    relative_path = file_path[file_path.index('audio_chunks'):]
+                else:
+                    relative_path = file_path
+                segment['url'] = f"{base_url}/{relative_path}"
+
+        # Completed
         update_split_job(
             job_id,
             status=SplitJobStatus.COMPLETED,
-            message=f"Successfully processed {len(segments)} segments",
+            message=f"Successfully processed {len(segments)} segments" + (" with transcription" if transcription and open_ai_key else ""),
             progress={"processed_segments": len(segments)},
             result={
                 "segments": segments,
@@ -242,9 +169,12 @@ async def process_splits_batch_job(
     output_format: str,
     return_absolute_paths: bool,
     base_url: str,
+    transcription: bool = False,
+    open_ai_key: str = None,
 ):
     """Background task to process batch splits job"""
     try:
+        # Splitting
         update_split_job(
             job_id,
             status=SplitJobStatus.SPLITTING,
@@ -273,7 +203,9 @@ async def process_splits_batch_job(
             output_folder = str(Path(output_base_folder) / file_stem)
 
             try:
-                segments = process_audio_file(
+                # Always use absolute paths internally (needed for transcription)
+                segments = await asyncio.to_thread(
+                    process_audio_file,
                     audio_url,
                     output_folder=output_folder,
                     threshold=threshold,
@@ -281,11 +213,36 @@ async def process_splits_batch_job(
                     min_silence_duration_ms=min_silence_duration_ms,
                     speech_pad_ms=speech_pad_ms,
                     output_format=output_format,
-                    return_absolute_paths=return_absolute_paths
+                    return_absolute_paths=True
                 )
-                # Convert relative paths to full URLs
+
+                # Transcribe audio chunks if requested and API key is provided
+                if transcription and open_ai_key:
+                    update_split_job(
+                        job_id,
+                        status=SplitJobStatus.TRANSCRIBING,
+                        message=f"Transcribing file {i}/{len(audio_urls)}",
+                        progress={"current_file_transcribing": i}
+                    )
+
+                    segments = await transcribe_audio_chunks(
+                        segments,
+                        open_ai_key,
+                        job_id=job_id
+                    )
+
+                # Convert paths to URLs or keep as absolute paths based on user preference
                 for segment in segments:
-                    segment['url'] = f"{base_url}/{segment['url']}"
+                    file_path = segment['url']
+                    if return_absolute_paths:
+                        pass
+                    else:
+                        if 'processed_audio' in file_path:
+                            relative_path = file_path[file_path.index('processed_audio'):]
+                        else:
+                            relative_path = file_path
+                        segment['url'] = f"{base_url}/{relative_path}"
+
                 results[audio_url] = {"segments": segments, "count": len(segments), "status": "success"}
                 total_segments += len(segments)
             except Exception as e:
@@ -299,10 +256,11 @@ async def process_splits_batch_job(
                 }
             )
 
+        # Completed
         update_split_job(
             job_id,
             status=SplitJobStatus.COMPLETED,
-            message=f"Batch processing complete: {len(audio_urls)} files, {total_segments} segments",
+            message=f"Batch processing complete: {len(audio_urls)} files, {total_segments} segments" + (" with transcription" if transcription and open_ai_key else ""),
             result={
                 "results": results,
                 "total_files": len(results),
@@ -332,12 +290,14 @@ async def splits_file_job(
     Returns immediately with job ID for tracking progress.
     """
     try:
-        job_id = create_split_job()
+        job_id = create_split_job(webhook_url=request.webhookUrl)
         base_url = str(http_request.base_url).rstrip('/')
 
+        # Set DOWNLOADING status immediately and return to user
         update_split_job(
             job_id,
-            message=f"Job created for audio: {request.audio_url}",
+            status=SplitJobStatus.DOWNLOADING,
+            message=f"Downloading audio from URL...",
             progress={"audio_url": request.audio_url}
         )
 
@@ -353,8 +313,11 @@ async def splits_file_job(
             output_format=request.output_format,
             return_absolute_paths=request.return_absolute_paths,
             base_url=base_url,
+            transcription=request.transcription,
+            open_ai_key=request.open_ai_key,
         )
 
+        # Return job info immediately with DOWNLOADING status
         job_info = get_split_job(job_id)
         return SplitJobResponse(**job_info)
 
@@ -384,12 +347,14 @@ async def splits_batch_job(
     Returns immediately with job ID for tracking progress.
     """
     try:
-        job_id = create_split_job()
+        job_id = create_split_job(webhook_url=request.webhookUrl)
         base_url = str(http_request.base_url).rstrip('/')
 
+        # Set DOWNLOADING status immediately and return to user
         update_split_job(
             job_id,
-            message=f"Batch job created for {len(request.audio_urls)} files",
+            status=SplitJobStatus.DOWNLOADING,
+            message=f"Downloading audio files...",
             progress={
                 "total_files": len(request.audio_urls),
                 "processed_files": 0,
@@ -408,8 +373,11 @@ async def splits_batch_job(
             output_format=request.output_format,
             return_absolute_paths=request.return_absolute_paths,
             base_url=base_url,
+            transcription=request.transcription,
+            open_ai_key=request.open_ai_key,
         )
 
+        # Return job info immediately with DOWNLOADING status
         job_info = get_split_job(job_id)
         return SplitJobResponse(**job_info)
 
@@ -467,15 +435,28 @@ async def delete_split_job(job_id: str, _: Dict = Depends(require_api_key)):
 async def upload_audio_dataset(
     request: UploadAudioDatasetRequest,
     background_tasks: BackgroundTasks,
-    _: Dict = Depends(require_api_key)
+    auth: Dict = Depends(require_api_key)
 ):
     """
     Create an upload job for audio dataset
     Returns immediately with job ID
     """
     try:
+        user_id = auth.get("id", "default")
+
+        # Check if user already has a pending job
+        user_jobs = get_user_jobs(user_id)
+        pending_statuses = {JobStatus.PENDING, JobStatus.PROCESSING, JobStatus.DOWNLOADING,
+                           JobStatus.SPLITTING, JobStatus.CREATING_DATASET, JobStatus.UPLOADING}
+        for job in user_jobs:
+            if job["status"] in pending_statuses:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"You already have a pending job (ID: {job['job_id']}). Please wait for it to complete before starting a new one."
+                )
+
         dataset_items = [item.dict() for item in request.dataset]
-        
+
         if not dataset_items or not request.datasetName or not request.token:
             raise HTTPException(
                 status_code=400,
@@ -483,7 +464,7 @@ async def upload_audio_dataset(
             )
         
         # Create job
-        job_id = create_job()
+        job_id = create_job(user_id, webhook_url=request.webhookUrl)
         
         # Update with initial info
         update_job(

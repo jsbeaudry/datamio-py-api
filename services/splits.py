@@ -7,6 +7,8 @@ import requests
 import hashlib
 import shutil
 import threading
+import asyncio
+import aiohttp
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from contextlib import contextmanager
@@ -17,18 +19,16 @@ from enum import Enum
 from pydantic import BaseModel
 
 # Default cleanup delay in seconds (60 minutes)
-CLEANUP_DELAY_SECONDS = 60 * 60
+CLEANUP_DELAY_SECONDS = 10 * 60
 
 # In-memory job storage (use Redis or database in production)
 splits_jobs_db: Dict[str, Dict[str, Any]] = {}
 
 
 class SplitJobStatus(str, Enum):
-    PENDING = "pending"
     DOWNLOADING = "downloading"
-    PROCESSING = "processing"
     SPLITTING = "splitting"
-    SAVING_CHUNKS = "saving_chunks"
+    TRANSCRIBING = "transcribing"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -42,6 +42,10 @@ class SplitAudioRequest(BaseModel):
     speech_pad_ms: int = 30
     output_format: str = "wav"
     return_absolute_paths: bool = False
+    clear_folder: bool = False
+    webhookUrl: Optional[str] = None
+    transcription: bool = False
+    open_ai_key: Optional[str] = None
 
 
 class SplitJobResponse(BaseModel):
@@ -55,7 +59,48 @@ class SplitJobResponse(BaseModel):
     error: Optional[str] = None
 
 
-def create_split_job(user_id: str = "default") -> str:
+# Webhook events to send notifications for
+SPLIT_WEBHOOK_EVENTS = {
+    SplitJobStatus.DOWNLOADING: "DOWNLOADING",
+    SplitJobStatus.SPLITTING: "SPLITTING",
+    SplitJobStatus.TRANSCRIBING: "TRANSCRIBING",
+    SplitJobStatus.COMPLETED: "COMPLETED",
+    SplitJobStatus.FAILED: "FAILED",
+}
+
+
+async def send_split_webhook(webhook_url: str, job_data: Dict[str, Any], event: str):
+    """Send webhook notification for split job status change"""
+    if not webhook_url:
+        return
+
+    payload = {
+        "event": event,
+        "job_id": job_data["job_id"],
+        "status": job_data["status"].value if isinstance(job_data["status"], SplitJobStatus) else job_data["status"],
+        "message": job_data["message"],
+        "created_at": job_data["created_at"],
+        "updated_at": job_data["updated_at"],
+        "progress": job_data["progress"],
+        "result": job_data.get("result"),
+        "error": job_data.get("error"),
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                if response.status >= 400:
+                    print(f"Webhook failed with status {response.status}: {await response.text()}")
+    except Exception as e:
+        print(f"Failed to send webhook: {e}")
+
+
+def create_split_job(user_id: str = "default", webhook_url: Optional[str] = None) -> str:
     """Create a new split job and return job ID"""
     job_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
@@ -63,8 +108,8 @@ def create_split_job(user_id: str = "default") -> str:
     splits_jobs_db[job_id] = {
         "job_id": job_id,
         "user_id": user_id,
-        "status": SplitJobStatus.PENDING,
-        "message": "Job created, waiting to start",
+        "status": SplitJobStatus.DOWNLOADING,
+        "message": "Downloading audio from URL...",
         "created_at": now,
         "updated_at": now,
         "progress": {
@@ -74,7 +119,12 @@ def create_split_job(user_id: str = "default") -> str:
         },
         "result": None,
         "error": None,
+        "webhook_url": webhook_url,
     }
+
+    # Schedule webhook for CREATED event
+    if webhook_url:
+        asyncio.create_task(send_split_webhook(webhook_url, splits_jobs_db[job_id], "CREATED"))
 
     return job_id
 
@@ -92,6 +142,7 @@ def update_split_job(
         return
 
     job = splits_jobs_db[job_id]
+    old_status = job["status"]
 
     if status:
         job["status"] = status
@@ -105,6 +156,12 @@ def update_split_job(
         job["error"] = error
 
     job["updated_at"] = datetime.utcnow().isoformat()
+
+    # Send webhook if status changed to a tracked event
+    if status and status != old_status and status in SPLIT_WEBHOOK_EVENTS:
+        webhook_url = job.get("webhook_url")
+        if webhook_url:
+            asyncio.create_task(send_split_webhook(webhook_url, job, SPLIT_WEBHOOK_EVENTS[status]))
 
 
 def get_split_job(job_id: str) -> Optional[Dict[str, Any]]:
@@ -147,6 +204,81 @@ def schedule_folder_cleanup(folder_path: str, delay_seconds: int = CLEANUP_DELAY
     timer.daemon = True  # Don't block program exit
     timer.start()
     print(f"Scheduled cleanup for '{folder_path}' in {delay_seconds // 60} minutes")
+
+
+async def transcribe_audio_chunk(file_path: str, open_ai_key: str) -> str:
+    """
+    Transcribe a single audio chunk using OpenAI Whisper API.
+
+    Args:
+        file_path: Path to the audio file to transcribe
+        open_ai_key: OpenAI API key
+
+    Returns:
+        Transcribed text
+    """
+    url = "https://api.openai.com/v1/audio/transcriptions"
+    headers = {
+        "Authorization": f"Bearer {open_ai_key}"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with open(file_path, 'rb') as audio_file:
+            form_data = aiohttp.FormData()
+            form_data.add_field('file', audio_file, filename=os.path.basename(file_path))
+            form_data.add_field('model', 'gpt-4o-transcribe')
+            form_data.add_field('prompt', 'In haitian creole')
+            
+
+            async with session.post(url, headers=headers, data=form_data) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    raise Exception(f"OpenAI API error: {response.status} - {error_text}")
+
+                result = await response.json()
+                return result.get('text', '')
+
+
+async def transcribe_audio_chunks(
+    segments: List[Dict[str, Any]],
+    open_ai_key: str,
+    job_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Transcribe all audio chunks and add transcription to segments.
+
+    Args:
+        segments: List of segment dictionaries with 'url' key pointing to audio files
+        open_ai_key: OpenAI API key
+        job_id: Optional job ID for progress updates
+
+    Returns:
+        Updated segments with 'transcription' field added
+    """
+    total = len(segments)
+
+    for i, segment in enumerate(segments, 1):
+        file_path = segment.get('url', '')
+        if not file_path or not os.path.exists(file_path):
+            segment['transcription'] = ''
+            continue
+
+        try:
+            transcription = await transcribe_audio_chunk(file_path, open_ai_key)
+            segment['transcription'] = transcription
+            print(f"Transcribed chunk {i}/{total}: {transcription[:50]}..." if len(transcription) > 50 else f"Transcribed chunk {i}/{total}: {transcription}")
+
+            if job_id:
+                update_split_job(
+                    job_id,
+                    message=f"Transcribing audio chunks ({i}/{total})",
+                    progress={"chunks_transcribed": i}
+                )
+        except Exception as e:
+            print(f"Failed to transcribe chunk {i}: {e}")
+            segment['transcription'] = ''
+
+    return segments
 
 
 @contextmanager
@@ -241,7 +373,8 @@ def cut_and_save_audio_chunks(
     output_format: str = "wav",
     preserve_sample_rate: bool = True,
     return_absolute_paths: bool = False,
-    base_name: Optional[str] = None
+    base_name: Optional[str] = None,
+    clear_folder: bool = False
 ) -> List[Dict[str, any]]:
     """
     Cut audio into chunks based on segments and save to folder.
@@ -250,10 +383,14 @@ def cut_and_save_audio_chunks(
         audio_source: Local file path or URL to audio file.
         base_name: Optional base name for output files. If not provided,
                    derived from the audio_source (filename or URL path).
+        clear_folder: If True, clears the output folder before adding new files.
     """
 
-    # Create output folder
+    # Create output folder (clear first if requested)
     output_path = Path(output_folder)
+    if clear_folder and output_path.exists():
+        shutil.rmtree(output_path)
+        print(f"Cleared existing folder: {output_folder}")
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Determine base name for output files
@@ -323,7 +460,8 @@ def process_audio_file(
     min_silence_duration_ms: int = 100,
     speech_pad_ms: int = 30,
     output_format: str = "wav",
-    return_absolute_paths: bool = False
+    return_absolute_paths: bool = False,
+    clear_folder: bool = False
 ) -> List[Dict[str, any]]:
     """
     Complete pipeline: detect speech segments and save chunks.
@@ -368,7 +506,8 @@ def process_audio_file(
             output_folder=output_folder,
             output_format=output_format,
             return_absolute_paths=return_absolute_paths,
-            base_name=base_name
+            base_name=base_name,
+            clear_folder=clear_folder
         )
 
     # Schedule automatic cleanup for URL-based sources
@@ -428,7 +567,10 @@ def batch_process_folder(
         except Exception as e:
             print(f"❌ Error processing {audio_file}: {e}\n")
             continue
-    
+
+    # Schedule automatic cleanup for the output folder
+    schedule_folder_cleanup(output_base_folder)
+
     return results
 
 
@@ -442,34 +584,24 @@ async def process_split_job(
     speech_pad_ms: int = 30,
     output_format: str = "wav",
     return_absolute_paths: bool = False,
+    clear_folder: bool = False,
+    transcription: bool = False,
+    open_ai_key: Optional[str] = None,
 ):
     """Background task to process audio splitting"""
     try:
-        update_split_job(
-            job_id,
-            status=SplitJobStatus.PROCESSING,
-            message="Starting audio processing",
-        )
-
         # Determine base name and output subfolder
         if is_url(audio_source):
             url_path = urllib.parse.urlparse(audio_source).path
             base_name = Path(url_path).stem or "audio"
             url_hash = get_url_hash(audio_source)
             output_folder = str(Path(output_folder) / url_hash)
+            
         else:
             base_name = Path(audio_source).stem
 
-        # Download if URL
-        if is_url(audio_source):
-            update_split_job(
-                job_id,
-                status=SplitJobStatus.DOWNLOADING,
-                message="Downloading audio file",
-            )
-
         with get_local_audio_path(audio_source) as local_path:
-            # Step 1: Detect speech segments
+            # Splitting
             update_split_job(
                 job_id,
                 status=SplitJobStatus.SPLITTING,
@@ -493,25 +625,34 @@ async def process_split_job(
                 }
             )
 
-            # Step 2: Cut and save chunks
-            update_split_job(
-                job_id,
-                status=SplitJobStatus.SAVING_CHUNKS,
-                message="Cutting and saving audio chunks",
-            )
-
             result_segments = cut_and_save_audio_chunks(
                 local_path,
                 segments,
                 output_folder=output_folder,
                 output_format=output_format,
                 return_absolute_paths=return_absolute_paths,
-                base_name=base_name
+                base_name=base_name,
+                clear_folder=clear_folder
             )
 
             update_split_job(
                 job_id,
                 progress={"chunks_saved": len(result_segments)}
+            )
+
+        # Transcribe audio chunks if requested and API key is provided
+        if transcription and open_ai_key:
+            update_split_job(
+                job_id,
+                status=SplitJobStatus.TRANSCRIBING,
+                message="Transcribing audio chunks with OpenAI Whisper",
+                progress={"chunks_transcribed": 0}
+            )
+
+            result_segments = await transcribe_audio_chunks(
+                result_segments,
+                open_ai_key,
+                job_id=job_id
             )
 
         # Schedule automatic cleanup for URL-based sources
@@ -522,7 +663,7 @@ async def process_split_job(
         update_split_job(
             job_id,
             status=SplitJobStatus.COMPLETED,
-            message="Audio splitting completed successfully",
+            message="Audio splitting completed successfully" if not (transcription and open_ai_key) else "Audio splitting and transcription completed successfully",
             result={
                 "success": True,
                 "output_folder": output_folder,
