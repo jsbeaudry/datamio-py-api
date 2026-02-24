@@ -42,7 +42,7 @@
       "name": "Health Check",
       "item": [
         {
-          "name": "API Health Check",
+          "name": "Landing Page",
           "request": {
             "auth": {
               "type": "noauth"
@@ -54,7 +54,23 @@
               "host": ["{{baseUrl}}"],
               "path": [""]
             },
-            "description": "Check API health and list available endpoints. No authentication required."
+            "description": "Serves the API landing page (HTML). No authentication required."
+          }
+        },
+        {
+          "name": "API Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Check API health and get job counts. No authentication required."
           }
         }
       ]
@@ -204,7 +220,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false,\n  \"webhookUrl\": null,\n  \"transcription\": false,\n  \"open_ai_key\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/splits/file",
@@ -230,7 +246,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false,\n  \"webhookUrl\": null,\n  \"transcription\": false,\n  \"open_ai_key\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/splits/batch",
@@ -256,7 +272,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+              "raw": "{\n  \"audio_url\": \"https://example.com/audio.wav\",\n  \"output_folder\": \"audio_chunks\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false,\n  \"webhookUrl\": null,\n  \"transcription\": false,\n  \"open_ai_key\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/splits/file/job",
@@ -282,7 +298,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false\n}"
+              "raw": "{\n  \"audio_urls\": [\n    \"https://example.com/audio1.wav\",\n    \"https://example.com/audio2.wav\"\n  ],\n  \"output_base_folder\": \"processed_audio\",\n  \"threshold\": 0.5,\n  \"min_speech_duration_ms\": 250,\n  \"min_silence_duration_ms\": 100,\n  \"speech_pad_ms\": 30,\n  \"output_format\": \"wav\",\n  \"return_absolute_paths\": false,\n  \"webhookUrl\": null,\n  \"transcription\": false,\n  \"open_ai_key\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/splits/batch/job",
@@ -388,7 +404,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"dataset\": [\n    {\n      \"id\": \"sample-001\",\n      \"text\": \"This is the transcript of the audio\",\n      \"audio\": \"https://example.com/audio1.wav\",\n      \"speaker_id\": \"speaker_01\",\n      \"nature\": \"natural\",\n      \"language\": \"en\",\n      \"domain\": \"general\"\n    },\n    {\n      \"id\": \"sample-002\",\n      \"text\": \"Another transcript example\",\n      \"audio\": \"https://example.com/audio2.wav\",\n      \"speaker_id\": \"speaker_02\",\n      \"nature\": \"synthetic\",\n      \"language\": \"en\",\n      \"domain\": \"medical\"\n    }\n  ],\n  \"datasetName\": \"my-audio-dataset\",\n  \"token\": \"hf_your_huggingface_token\",\n  \"isPrivate\": 0\n}"
+              "raw": "{\n  \"dataset\": [\n    {\n      \"id\": \"sample-001\",\n      \"text\": \"This is the transcript of the audio\",\n      \"audio\": \"https://example.com/audio1.wav\",\n      \"speaker_id\": \"speaker_01\",\n      \"nature\": \"natural\",\n      \"language\": \"en\",\n      \"domain\": \"general\"\n    },\n    {\n      \"id\": \"sample-002\",\n      \"text\": \"Another transcript example\",\n      \"audio\": \"https://example.com/audio2.wav\",\n      \"speaker_id\": \"speaker_02\",\n      \"nature\": \"synthetic\",\n      \"language\": \"en\",\n      \"domain\": \"medical\"\n    }\n  ],\n  \"datasetName\": \"my-audio-dataset\",\n  \"token\": \"hf_your_huggingface_token\",\n  \"isPrivate\": 0,\n  \"webhookUrl\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/upload-audio-dataset",

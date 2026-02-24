@@ -67,6 +67,8 @@
             "Audio file splitting by silence detection",
             "Voice Activity Detection (VAD)",
             "Batch audio processing",
+            "OpenAI Whisper transcription support",
+            "Webhook notifications for job status",
             "Async job processing with status tracking",
             "Hugging Face Hub integration",
             "API key management",
@@ -1854,7 +1856,16 @@
                 </div>
 
                 <div class="endpoint-group">
-                    <h3>🎵 Audio Splitting</h3>
+                    <h3>💚 Health</h3>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/health</span>
+                        <span class="endpoint-desc">API health check</span>
+                    </div>
+                </div>
+
+                <div class="endpoint-group">
+                    <h3>🎵 Audio Splitting & Transcription</h3>
                     <div class="endpoint">
                         <span class="method method-post">POST</span>
                         <span class="endpoint-path">/api/splits/file</span>
@@ -1868,17 +1879,22 @@
                     <div class="endpoint">
                         <span class="method method-post">POST</span>
                         <span class="endpoint-path">/api/splits/file/job</span>
-                        <span class="endpoint-desc">Create async split job</span>
+                        <span class="endpoint-desc">Async split with transcription</span>
                     </div>
                     <div class="endpoint">
                         <span class="method method-post">POST</span>
                         <span class="endpoint-path">/api/splits/batch/job</span>
-                        <span class="endpoint-desc">Create async batch job</span>
+                        <span class="endpoint-desc">Async batch with transcription</span>
                     </div>
                     <div class="endpoint">
                         <span class="method method-get">GET</span>
                         <span class="endpoint-path">/api/splits/job/{job_id}</span>
                         <span class="endpoint-desc">Get job status</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/splits/job/{job_id}</span>
+                        <span class="endpoint-desc">Delete split job</span>
                     </div>
                 </div>
 
@@ -1894,6 +1910,11 @@
                         <span class="endpoint-path">/api/job/{job_id}</span>
                         <span class="endpoint-desc">Get upload job status</span>
                     </div>
+                    <div class="endpoint">
+                        <span class="method method-delete">DELETE</span>
+                        <span class="endpoint-path">/api/job/{job_id}</span>
+                        <span class="endpoint-desc">Delete upload job</span>
+                    </div>
                 </div>
 
                 <div class="endpoint-group">
@@ -1907,6 +1928,16 @@
                         <span class="method method-get">GET</span>
                         <span class="endpoint-path">/api/keys</span>
                         <span class="endpoint-desc">List all API keys</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-get">GET</span>
+                        <span class="endpoint-path">/api/keys/{key_id}</span>
+                        <span class="endpoint-desc">Get key details</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method method-post">POST</span>
+                        <span class="endpoint-path">/api/keys/{key_id}/revoke</span>
+                        <span class="endpoint-desc">Revoke API key</span>
                     </div>
                     <div class="endpoint">
                         <span class="method method-delete">DELETE</span>
