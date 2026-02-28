@@ -95,7 +95,7 @@ async def process_splits_file_job(
         )
 
         # Always use absolute paths internally (needed for transcription)
-        segments = await asyncio.to_thread(
+        audio_result = await asyncio.to_thread(
             process_audio_file,
             audio_url,
             output_folder=output_folder,
@@ -106,6 +106,9 @@ async def process_splits_file_job(
             output_format=output_format,
             return_absolute_paths=True
         )
+        segments = audio_result["segments"]
+        split_points = audio_result["splitPoints"]
+        detected_silences = audio_result["detectedSilences"]
 
         # Transcribe audio chunks if requested and API key is provided
         if transcription and open_ai_key:
@@ -143,7 +146,16 @@ async def process_splits_file_job(
             message=f"Successfully processed {len(segments)} segments" + (" with transcription" if transcription and open_ai_key else ""),
             progress={"processed_segments": len(segments)},
             result={
+                "splitPoints": split_points,
                 "segments": segments,
+                "detectedSilences": detected_silences,
+                "settings": {
+                    "threshold": threshold,
+                    "min_speech_duration_ms": min_speech_duration_ms,
+                    "min_silence_duration_ms": min_silence_duration_ms,
+                    "speech_pad_ms": speech_pad_ms,
+                    "output_format": output_format,
+                },
                 "count": len(segments),
             }
         )

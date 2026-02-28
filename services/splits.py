@@ -510,11 +510,27 @@ def process_audio_file(
             clear_folder=clear_folder
         )
 
+    # Compute silence gaps between speech segments
+    detected_silences = []
+    for i in range(len(segments) - 1):
+        silence_start = segments[i]['end']
+        silence_end = segments[i + 1]['start']
+        if silence_end > silence_start:
+            detected_silences.append({
+                "start": silence_start,
+                "end": silence_end,
+                "duration": round(silence_end - silence_start, 3),
+            })
+
     # Schedule automatic cleanup for URL-based sources
     if is_url(audio_source):
         schedule_folder_cleanup(output_folder)
 
-    return result_segments
+    return {
+        "segments": result_segments,
+        "splitPoints": [{"start": s["start"], "end": s["end"], "duration": s["duration"]} for s in segments],
+        "detectedSilences": detected_silences,
+    }
 
 
 def batch_process_folder(
@@ -556,13 +572,13 @@ def batch_process_folder(
         output_folder = Path(output_base_folder) / audio_file.stem
         
         try:
-            segments = process_audio_file(
+            file_result = process_audio_file(
                 str(audio_file),
                 output_folder=str(output_folder),
                 return_absolute_paths=return_absolute_paths,
                 **vad_params
             )
-            results[str(audio_file)] = segments
+            results[str(audio_file)] = file_result["segments"]
             print(f"\n{'='*60}\n")
         except Exception as e:
             print(f"❌ Error processing {audio_file}: {e}\n")
@@ -659,6 +675,18 @@ async def process_split_job(
         if is_url(audio_source):
             schedule_folder_cleanup(output_folder)
 
+        # Compute silence gaps between speech segments
+        detected_silences = []
+        for i in range(len(segments) - 1):
+            silence_start = segments[i]['end']
+            silence_end = segments[i + 1]['start']
+            if silence_end > silence_start:
+                detected_silences.append({
+                    "start": silence_start,
+                    "end": silence_end,
+                    "duration": round(silence_end - silence_start, 3),
+                })
+
         # Job completed successfully
         update_split_job(
             job_id,
@@ -668,7 +696,16 @@ async def process_split_job(
                 "success": True,
                 "output_folder": output_folder,
                 "total_segments": len(result_segments),
+                "splitPoints": [{"start": s["start"], "end": s["end"], "duration": s["duration"]} for s in segments],
                 "segments": result_segments,
+                "detectedSilences": detected_silences,
+                "settings": {
+                    "threshold": threshold,
+                    "min_speech_duration_ms": min_speech_duration_ms,
+                    "min_silence_duration_ms": min_silence_duration_ms,
+                    "speech_pad_ms": speech_pad_ms,
+                    "output_format": output_format,
+                },
             }
         )
 
